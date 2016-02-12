@@ -35,6 +35,8 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
+
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.lambda.AWSLambdaClient;
 import com.amazonaws.services.lambda.model.InvalidParameterValueException;
 import com.amazonaws.services.lambda.model.InvalidRequestContentException;
@@ -56,6 +58,7 @@ import com.amazonaws.util.Base64;
     @WritesAttribute(attribute = "aws.lambda.result.function.error", description = "Function error message in result on posting message to AWS Lambda"),
     @WritesAttribute(attribute = "aws.lambda.result.status.code", description = "Status code in the result for the message when posting to AWS Lambda"),
     @WritesAttribute(attribute = "aws.lambda.result.payload", description = "Payload in the result from AWS Lambda"),
+    @WritesAttribute(attribute = "aws.lambda.exception.message", description = "Exception message on invoking from AWS Lambda"),
     @WritesAttribute(attribute = "aws.lambda.result.log", description = "Log in the result of the message posted to Lambda")})
 public class PutLambda extends AbstractAWSLambdaProcessor {
 
@@ -78,6 +81,36 @@ public class PutLambda extends AbstractAWSLambdaProcessor {
      * Lambda payload in response
      */
     public static final String AWS_LAMBDA_RESULT_PAYLOAD = "aws.lambda.result.payload";
+
+    /**
+     * Lambda exception field
+     */
+    public static final String AWS_LAMBDA_EXCEPTION_MESSAGE = "aws.lambda.exception.message";
+
+    /**
+     * Lambda exception field
+     */
+    public static final String AWS_LAMBDA_EXCEPTION_CAUSE = "aws.lambda.exception.cause";
+
+    /**
+     * Lambda exception field
+     */
+    public static final String AWS_LAMBDA_EXCEPTION_ERROR_CODE = "aws.lambda.exception.error.code";
+
+    /**
+     * Lambda exception field
+     */
+    public static final String AWS_LAMBDA_EXCEPTION_REQUEST_ID = "aws.lambda.exception.request.id";
+
+    /**
+     * Lambda exception field
+     */
+    public static final String AWS_LAMBDA_EXCEPTION_STATUS_CODE = "aws.lambda.exception.status.code";
+
+    /**
+     * Lambda exception field
+     */
+    public static final String AWS_LAMBDA_EXCEPTION_ERROR_TYPE = "aws.lambda.exception.error.type";
 
     /**
      * Max request body size
@@ -153,19 +186,41 @@ public class PutLambda extends AbstractAWSLambdaProcessor {
             | UnsupportedMediaTypeException unrecoverableException) {
                 getLogger().error("Failed to invoke lambda {} with unrecoverable exception {} for flow file {}",
                     new Object[]{functionName, unrecoverableException, flowFile});
+                flowFile = populateExceptionAttributes(session, flowFile, unrecoverableException);
                 session.transfer(flowFile, REL_FAILURE);
         } catch (final ServiceException | TooManyRequestsException exception) {
-            getLogger().error("Failed to invoke lambda {} with exception {} for flow file {}",
+            getLogger().error("Failed to invoke lambda {} with exception {} for flow file {}, therefore penalizing flowfile",
                 new Object[]{functionName, exception, flowFile});
+            flowFile = populateExceptionAttributes(session, flowFile, exception);
+            flowFile = session.penalize(flowFile);
             session.transfer(flowFile, REL_FAILURE);
             context.yield();
         } catch (final Exception exception) {
             getLogger().error("Failed to invoke lambda {} with exception {} for flow file {}",
                 new Object[]{functionName, exception, flowFile});
-            flowFile = session.penalize(flowFile);
             session.transfer(flowFile, REL_FAILURE);
             context.yield();
         }
+    }
+
+    /**
+     * Populate exception attributes in the flow file
+     * @param session process session
+     * @param flowFile the flow file
+     * @param exception exception thrown during invocation
+     * @return FlowFile the updated flow file
+     */
+    private FlowFile populateExceptionAttributes(final ProcessSession session, FlowFile flowFile,
+            final AmazonServiceException exception) {
+        flowFile = session.putAttribute(flowFile, AWS_LAMBDA_EXCEPTION_MESSAGE, exception.getErrorMessage());
+        flowFile = session.putAttribute(flowFile, AWS_LAMBDA_EXCEPTION_ERROR_CODE, exception.getErrorCode());
+        flowFile = session.putAttribute(flowFile, AWS_LAMBDA_EXCEPTION_REQUEST_ID, exception.getRequestId());
+        flowFile = session.putAttribute(flowFile, AWS_LAMBDA_EXCEPTION_STATUS_CODE, Integer.toString(exception.getStatusCode()));
+        if ( exception.getCause() != null )
+            flowFile = session.putAttribute(flowFile, AWS_LAMBDA_EXCEPTION_CAUSE, exception.getCause().getMessage());
+        flowFile = session.putAttribute(flowFile, AWS_LAMBDA_EXCEPTION_ERROR_TYPE, exception.getErrorType().toString());
+        flowFile = session.putAttribute(flowFile, AWS_LAMBDA_EXCEPTION_MESSAGE, exception.getErrorMessage());
+        return flowFile;
     }
 
 }

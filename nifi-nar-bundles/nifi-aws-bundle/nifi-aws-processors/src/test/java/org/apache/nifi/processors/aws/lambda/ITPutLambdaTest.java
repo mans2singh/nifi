@@ -2,6 +2,7 @@ package org.apache.nifi.processors.aws.lambda;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -89,6 +90,34 @@ public class ITPutLambdaTest {
         assertNull("Function error should be null " + out.getAttribute(PutLambda.AWS_LAMBDA_RESULT_FUNCTION_ERROR), out.getAttribute(PutLambda.AWS_LAMBDA_RESULT_FUNCTION_ERROR));
         assertNotNull("log should not be null", out.getAttribute(PutLambda.AWS_LAMBDA_RESULT_LOG));
         assertEquals("Status should be equal", "200",out.getAttribute(PutLambda.AWS_LAMBDA_RESULT_STATUS_CODE));
+    }
+
+    /**
+     * Comment out ignore for integration tests (requires creds files)
+     */
+    @Test
+//    @Ignore
+    public void testIntegrationClientErrorBadMessageBody() throws Exception {
+        runner = TestRunners.newTestRunner(PutLambda.class);
+        runner.setProperty(PutLambda.CREDENTIALS_FILE, CREDENTIALS_FILE);
+        runner.setProperty(PutLambda.AWS_LAMBDA_FUNCTION_NAME, "hello");
+        runner.assertValid();
+
+        runner.enqueue("badbod".getBytes());
+        runner.run(1);
+
+        runner.assertAllFlowFilesTransferred(PutLambda.REL_FAILURE, 1);
+        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(FetchS3Object.REL_FAILURE);
+        final MockFlowFile out = ffs.iterator().next();
+        assertNull("Function error should be null since there is exception"
+            + out.getAttribute(PutLambda.AWS_LAMBDA_RESULT_FUNCTION_ERROR), out.getAttribute(PutLambda.AWS_LAMBDA_RESULT_FUNCTION_ERROR));
+        assertNull("log should not be null", out.getAttribute(PutLambda.AWS_LAMBDA_RESULT_LOG));
+        assertEquals("Status should be equal", null,out.getAttribute(PutLambda.AWS_LAMBDA_RESULT_STATUS_CODE));
+        assertEquals("exception error code should be equal", "InvalidRequestContentException",out.getAttribute(PutLambda.AWS_LAMBDA_EXCEPTION_ERROR_CODE));
+        assertEquals("exception exception error type should be equal", "Client",out.getAttribute(PutLambda.AWS_LAMBDA_EXCEPTION_ERROR_TYPE));
+        assertEquals("exception exception error code should be equal", "400",out.getAttribute(PutLambda.AWS_LAMBDA_EXCEPTION_STATUS_CODE));
+        assertTrue("exception exception error message should be start with",out.getAttribute(PutLambda.AWS_LAMBDA_EXCEPTION_MESSAGE)
+               .startsWith("Could not parse request body into json: Unrecognized token 'badbod': was expecting ('true', 'false' or 'null')"));
     }
 
     /**
