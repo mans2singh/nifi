@@ -18,7 +18,7 @@ package org.apache.nifi.processors.aws.sqs;
 
 import java.util.List;
 
-import org.apache.nifi.processors.aws.AbstractAWSProcessor;
+import org.apache.nifi.processors.aws.AbstractBaseAWSProcessor;
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderControllerService;
 import org.apache.nifi.processors.aws.sns.PutSNS;
 import org.apache.nifi.util.MockFlowFile;
@@ -60,7 +60,7 @@ public class TestGetSQS {
 
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
 
-        runner.setProperty(serviceImpl, AbstractAWSProcessor.CREDENTIALS_FILE, System.getProperty("user.home") + "/aws-credentials.properties");
+        runner.setProperty(serviceImpl, AbstractBaseAWSProcessor<ClientType>.CREDENTIALS_FILE, System.getProperty("user.home") + "/aws-credentials.properties");
         runner.enableControllerService(serviceImpl);
 
         runner.assertValid(serviceImpl);

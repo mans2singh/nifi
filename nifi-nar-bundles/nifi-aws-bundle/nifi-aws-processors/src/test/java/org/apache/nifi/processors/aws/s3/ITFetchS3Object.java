@@ -17,7 +17,7 @@
 package org.apache.nifi.processors.aws.s3;
 
 import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.processors.aws.AbstractAWSProcessor;
+import org.apache.nifi.processors.aws.AbstractBaseAWSProcessor;
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderControllerService;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
@@ -66,7 +66,7 @@ public class ITFetchS3Object extends AbstractS3IT {
 
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
 
-        runner.setProperty(serviceImpl, AbstractAWSProcessor.CREDENTIALS_FILE, System.getProperty("user.home") + "/aws-credentials.properties");
+        runner.setProperty(serviceImpl, AbstractBaseAWSProcessor<ClientType>.CREDENTIALS_FILE, System.getProperty("user.home") + "/aws-credentials.properties");
         runner.enableControllerService(serviceImpl);
         runner.assertValid(serviceImpl);
 
