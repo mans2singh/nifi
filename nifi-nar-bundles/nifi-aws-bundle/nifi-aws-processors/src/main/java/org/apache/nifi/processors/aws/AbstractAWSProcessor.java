@@ -16,6 +16,8 @@
  */
 package org.apache.nifi.processors.aws;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLContext;
@@ -23,11 +25,15 @@ import javax.net.ssl.SSLContext;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.processor.ProcessContext;
+import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.ssl.SSLContextService;
 
 import com.amazonaws.AmazonWebServiceClient;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AnonymousAWSCredentials;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.PropertiesCredentials;
 import com.amazonaws.http.conn.ssl.SdkTLSSocketFactory;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
@@ -64,13 +70,35 @@ public abstract class AbstractAWSProcessor<ClientType extends AmazonWebServiceCl
         return config;
     }
 
-	@OnScheduled
-	public void onScheduled(final ProcessContext context) {
-		super.onScheduled(context);
-	    final ClientType awsClient = createClient(context, getCredentials(context), createConfiguration(context));
-	    this.client = awsClient;
-	    intializeRegionAndEndpoint(context);
-	}
+    protected AWSCredentials getCredentials(final ProcessContext context) {
+        final String accessKey = context.getProperty(ACCESS_KEY).evaluateAttributeExpressions().getValue();
+        final String secretKey = context.getProperty(SECRET_KEY).evaluateAttributeExpressions().getValue();
+
+        final String credentialsFile = context.getProperty(CREDENTIALS_FILE).getValue();
+
+        if (credentialsFile != null) {
+            try {
+                return new PropertiesCredentials(new File(credentialsFile));
+            } catch (final IOException ioe) {
+                throw new ProcessException("Could not read Credentials File", ioe);
+            }
+        }
+
+        if (accessKey != null && secretKey != null) {
+            return new BasicAWSCredentials(accessKey, secretKey);
+        }
+
+        return new AnonymousAWSCredentials();
+
+    }
+
+    @OnScheduled
+    public void onScheduled(final ProcessContext context) {
+        super.onScheduled(context);
+        final ClientType awsClient = createClient(context, getCredentials(context), createConfiguration(context));
+        this.client = awsClient;
+        intializeRegionAndEndpoint(context);
+    }
 
     protected void intializeRegionAndEndpoint(ProcessContext context) {
         // if the processor supports REGION, get the configured region.

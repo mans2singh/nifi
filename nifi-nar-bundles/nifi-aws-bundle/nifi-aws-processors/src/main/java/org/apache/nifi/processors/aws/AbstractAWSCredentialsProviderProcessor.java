@@ -16,7 +16,6 @@
  */
 package org.apache.nifi.processors.aws;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
-import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.ControllerService;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderService;
@@ -34,18 +33,6 @@ import com.amazonaws.auth.AWSCredentialsProvider;
  */
 public abstract class AbstractAWSCredentialsProviderProcessor<ClientType extends AmazonWebServiceClient>
     extends AbstractAWSProcessor<ClientType>  {
-
-    /**
-     * AWS credentials provider service
-     *
-     * @see  <a href="http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/AWSCredentialsProvider.html">AWSCredentialsProvider</a>
-     */
-    public static final PropertyDescriptor AWS_CREDENTIALS_PROVIDER_SERVICE = new PropertyDescriptor.Builder()
-            .name("AWS Credentials Provider service")
-            .description("The Controller Service that is used to obtain aws credentials provider")
-            .required(false)
-            .identifiesControllerService(AWSCredentialsProviderService.class)
-            .build();
 
     /**
      * This method checks if {#link {@link #AWS_CREDENTIALS_PROVIDER_SERVICE} is available and if it

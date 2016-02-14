@@ -65,7 +65,7 @@ public class TestPutSQS {
 
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
 
-        runner.setProperty(serviceImpl, AbstractBaseAWSProcessor<ClientType>.CREDENTIALS_FILE, System.getProperty("user.home") + "/aws-credentials.properties");
+        runner.setProperty(serviceImpl, AbstractBaseAWSProcessor.CREDENTIALS_FILE, System.getProperty("user.home") + "/aws-credentials.properties");
         runner.enableControllerService(serviceImpl);
 
         runner.assertValid(serviceImpl);

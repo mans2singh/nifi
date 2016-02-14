@@ -17,73 +17,21 @@
 package org.apache.nifi.processors.aws.kinesis;
 
 import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.util.StandardValidators;
-import org.apache.nifi.processors.aws.AbstractAWSCredentialsProviderProcessor;
+import org.apache.nifi.processors.aws.AbstractBaseAWSProcessor;
 
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseClient;
-
-/**
- * This class provides processor the base class for kinesis stream
- */
-public abstract class AbstractKinesisProcessor extends AbstractAWSCredentialsProviderProcessor<AmazonKinesisFirehoseClient> {
+public abstract class AbstractKinesisProcessor extends AbstractBaseAWSProcessor {
 
     public static final PropertyDescriptor KINESIS_STREAM_NAME = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Stream Name")
-            .description("The name of kinesis stream")
-            .expressionLanguageSupported(false)
-            .required(true)
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .build();
+                .name("Amazon Kinesis Stream Name")
+                .description("The name of kinesis stream")
+                .expressionLanguageSupported(false)
+                .required(true)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
 
-    public static final PropertyDescriptor MAX_BUFFER_INTERVAL = new PropertyDescriptor.Builder()
-            .name("Max Buffer Interval")
-            .description("Buffering interval for messages (between 60 and 900 seconds).")
-            .defaultValue("60")
-            .required(false)
-            .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
-            .sensitive(false)
-            .build();
-
-    public static final PropertyDescriptor MAX_BUFFER_SIZE = new PropertyDescriptor.Builder()
-            .name("Max Buffer Size (MB)")
-            .description("Buffering size for messages (between 1MB and 128MB).")
-            .defaultValue("128")
-            .required(false)
-            .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
-            .sensitive(false)
-            .build();
-
-    public static final PropertyDescriptor BATCH_SIZE = new PropertyDescriptor.Builder()
-            .name("Batch Size")
-            .description("Batch size for messages (1-500).")
-            .defaultValue("250")
-            .required(false)
-            .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
-            .sensitive(false)
-            .build();
-    /**
-     * Create client using aws credentials provider. This is the preferred way for creating clients
-     */
-    @Override
-    protected AmazonKinesisFirehoseClient createClient(final ProcessContext context, final AWSCredentialsProvider credentialsProvider, final ClientConfiguration config) {
-        getLogger().info("Creating client using aws credentials provider");
-
-        return new AmazonKinesisFirehoseClient(credentialsProvider, config);
+    public AbstractKinesisProcessor() {
+        super();
     }
 
-    /**
-     * Create client using AWSCredentails
-     *
-     * @deprecated use {@link #createClient(ProcessContext, AWSCredentialsProvider, ClientConfiguration)} instead
-     */
-    @Override
-    protected AmazonKinesisFirehoseClient createClient(final ProcessContext context, final AWSCredentials credentials, final ClientConfiguration config) {
-        getLogger().info("Creating client using aws credentials");
-
-        return new AmazonKinesisFirehoseClient(credentials, config);
-    }
 }
