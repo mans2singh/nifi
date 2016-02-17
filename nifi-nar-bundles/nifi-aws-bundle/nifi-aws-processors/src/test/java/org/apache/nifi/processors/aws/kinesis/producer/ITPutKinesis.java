@@ -32,11 +32,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-/**
- * This
- *
- */
-public class ITPutKinesisTest {
+public class ITPutKinesis {
 
     private TestRunner runner;
     protected final static String CREDENTIALS_FILE = System.getProperty("user.home") + "/aws-credentials.properties";
@@ -47,7 +43,7 @@ public class ITPutKinesisTest {
         final AWSCredentialsProviderControllerService serviceImpl = new AWSCredentialsProviderControllerService();
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
         runner.setProperty(serviceImpl, AbstractBaseAWSProcessor.CREDENTIALS_FILE,
-        		CREDENTIALS_FILE);
+                CREDENTIALS_FILE);
         runner.enableControllerService(serviceImpl);
 
         runner.assertValid(serviceImpl);
@@ -80,7 +76,7 @@ public class ITPutKinesisTest {
         final MockFlowFile out = ffs.iterator().next();
 
         Map<String, String> attributes = out.getAttributes();
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL)); 
+        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
         assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
         assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
@@ -104,7 +100,7 @@ public class ITPutKinesisTest {
       final MockFlowFile out = ffs.iterator().next();
 
       Map<String, String> attributes = out.getAttributes();
-      assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL)); 
+      assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
       assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
       assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
@@ -128,7 +124,7 @@ public class ITPutKinesisTest {
       final MockFlowFile out = ffs.iterator().next();
 
       Map<String, String> attributes = out.getAttributes();
-      assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL)); 
+      assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
       assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
       assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 

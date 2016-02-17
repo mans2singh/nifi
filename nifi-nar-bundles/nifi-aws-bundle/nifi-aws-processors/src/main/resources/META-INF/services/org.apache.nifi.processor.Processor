@@ -20,4 +20,6 @@ org.apache.nifi.processors.aws.sqs.GetSQS
 org.apache.nifi.processors.aws.sqs.PutSQS
 org.apache.nifi.processors.aws.sqs.DeleteSQS
 org.apache.nifi.processors.aws.kinesis.producer.PutKinesis
+org.apache.nifi.processors.aws.kinesis.consumer.GetKinesis
+
 

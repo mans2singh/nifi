@@ -18,7 +18,6 @@ package org.apache.nifi.processors.aws.kinesis.producer;
 
 import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.expression.AttributeExpression;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.processors.aws.kinesis.AbstractKinesisProcessor;
 
@@ -171,12 +170,4 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .sensitive(false)
             .build();
 
-    public static final PropertyDescriptor BATCH_SIZE = new PropertyDescriptor.Builder()
-            .name("Batch Size")
-            .description("Batch size for messages to be processed on each trigger request (between 1-500).")
-            .defaultValue("250")
-            .required(false)
-            .addValidator(StandardValidators.createLongValidator(1,500,true))
-            .sensitive(false)
-            .build();
 }

@@ -20,8 +20,15 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.processors.aws.AbstractBaseAWSProcessor;
 
+/**
+ * Base class for Nifi aws kinesis processors.  It delcares common property descriptors used
+ * by kinesis processors
+ */
 public abstract class AbstractKinesisProcessor extends AbstractBaseAWSProcessor {
 
+    /**
+     * Kinesis stream name
+     */
     public static final PropertyDescriptor KINESIS_STREAM_NAME = new PropertyDescriptor.Builder()
                 .name("Amazon Kinesis Stream Name")
                 .description("The name of kinesis stream")
@@ -30,8 +37,16 @@ public abstract class AbstractKinesisProcessor extends AbstractBaseAWSProcessor 
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
-    public AbstractKinesisProcessor() {
-        super();
-    }
+    /**
+     * Batch size of messages to be processed when the processor is invoked
+     */
+    public static final PropertyDescriptor BATCH_SIZE = new PropertyDescriptor.Builder()
+            .name("Batch Size")
+            .description("Batch size for messages to be processed on each trigger request (between 1-500).")
+            .defaultValue("250")
+            .required(false)
+            .addValidator(StandardValidators.createLongValidator(1,500,true))
+            .sensitive(false)
+            .build();
 
 }

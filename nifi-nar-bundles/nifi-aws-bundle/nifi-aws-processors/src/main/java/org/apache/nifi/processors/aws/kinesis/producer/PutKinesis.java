@@ -51,7 +51,7 @@ import com.amazonaws.services.kinesis.producer.Attempt;
 @SupportsBatching
 @InputRequirement(Requirement.INPUT_REQUIRED)
 @Tags({"amazon", "aws", "kinesis", "put", "stream"})
-@CapabilityDescription("Sends the contents to a specified Amazon Kinesis stream")
+@CapabilityDescription("Sends the contents of the flowfile to a specified Amazon Kinesis stream")
 @ReadsAttribute(attribute = PutKinesis.AWS_KINESIS_PARTITION_KEY, description = "Partition key to be used for publishing data to kinesis.  If it is not available then a random key used")
 @WritesAttributes({
     @WritesAttribute(attribute = PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL, description = "Was the record posted successfully"),
@@ -195,19 +195,17 @@ public class PutKinesis extends AbstractKinesisProducerProcessor {
 
                 try {
                     userRecordResult = future.get();
-                }
-                catch(ExecutionException ee) {
-                	// Handle exception from individual record
-                	Throwable cause = ee.getCause();
-                	if ( cause instanceof UserRecordFailedException ) {
-                		UserRecordFailedException urfe = (UserRecordFailedException) cause;
-                		userRecordResult = urfe.getResult();
-                	}
-                	else {
+                } catch(ExecutionException ee) {
+                    // Handle exception from individual record
+                    Throwable cause = ee.getCause();
+                    if ( cause instanceof UserRecordFailedException ) {
+                        UserRecordFailedException urfe = (UserRecordFailedException) cause;
+                        userRecordResult = urfe.getResult();
+                    } else {
                         session.transfer(flowFile, PutKinesis.REL_FAILURE);
                         getLogger().error("Failed to publish to kinesis {} record {}", new Object[]{stream, flowFile});
                         continue;
-                	}
+                    }
                 }
                 Map<String, String> attributes = createAttributes(userRecordResult);
 
@@ -258,10 +256,12 @@ public class PutKinesis extends AbstractKinesisProducerProcessor {
         attributes.put(AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_COUNT, Integer.toString(result.getAttempts().size()));
         return attributes;
     }
-    
+
     @OnShutdown
     public void onShutdown() {
-    	producer.flushSync();
-    	producer.destroy();
+        if ( producer != null ) {
+            producer.flushSync();
+            producer.destroy();
+        }
     }
 }

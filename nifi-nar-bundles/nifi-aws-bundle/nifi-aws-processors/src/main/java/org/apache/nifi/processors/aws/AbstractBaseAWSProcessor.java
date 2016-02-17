@@ -29,9 +29,12 @@ import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.components.ValidationContext;
 import org.apache.nifi.components.ValidationResult;
-import org.apache.nifi.processor.AbstractProcessor;
+import org.apache.nifi.processor.AbstractSessionFactoryProcessor;
 import org.apache.nifi.processor.ProcessContext;
+import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.ProcessSessionFactory;
 import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderService;
 import org.apache.nifi.ssl.SSLContextService;
@@ -49,12 +52,12 @@ import com.amazonaws.regions.Regions;
  * @see AbstractAWSProcessor
  * @see AmazonWebServiceClient
  */
-public abstract class AbstractBaseAWSProcessor extends AbstractProcessor {
+public abstract class AbstractBaseAWSProcessor extends AbstractSessionFactoryProcessor {
 
     public static final Relationship REL_SUCCESS = new Relationship.Builder().name("success")
-                .description("FlowFiles are routed to success after being successfully copied to Amazon S3").build();
+                .description("FlowFiles are routed to success relationship").build();
     public static final Relationship REL_FAILURE = new Relationship.Builder().name("failure")
-                .description("FlowFiles are routed to failure if unable to be copied to Amazon S3").build();
+                .description("FlowFiles are routed to failure relationship").build();
     public static final Set<Relationship> relationships = Collections.unmodifiableSet(
                 new HashSet<>(Arrays.asList(REL_SUCCESS, REL_FAILURE)));
     /**
@@ -144,6 +147,21 @@ public abstract class AbstractBaseAWSProcessor extends AbstractProcessor {
     public Set<Relationship> getRelationships() {
         return relationships;
     }
+
+    @Override
+    public void onTrigger(final ProcessContext context, final ProcessSessionFactory sessionFactory) throws ProcessException {
+        final ProcessSession session = sessionFactory.createSession();
+        try {
+            onTrigger(context, session);
+            session.commit();
+        } catch (final Throwable t) {
+            getLogger().error("{} failed to process due to {}; rolling back session", new Object[]{this, t});
+            session.rollback(true);
+            throw t;
+        }
+    }
+
+    public abstract void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException;
 
     @Override
     protected Collection<ValidationResult> customValidate(final ValidationContext validationContext) {
