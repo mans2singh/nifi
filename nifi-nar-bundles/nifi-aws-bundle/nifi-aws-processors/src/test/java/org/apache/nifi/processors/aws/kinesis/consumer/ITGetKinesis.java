@@ -56,7 +56,7 @@ public class ITGetKinesis  {
     private GetKinesis getKinesis;
     private IRecordProcessorCheckpointer mockRecordProcessorCheckPointer;
     private static final String kinesisStream = "k-stream";
-    
+
     @Before
     public void setUp() throws Exception {
         mockRecordProcessorCheckPointer = Mockito.mock(IRecordProcessorCheckpointer.class);
@@ -74,7 +74,7 @@ public class ITGetKinesis  {
 
     @After
     public void tearDown() throws Exception {
-    	getKinesis.onShutdown();
+        getKinesis.onShutdown();
         runner = null;
         getKinesis = null;
     }

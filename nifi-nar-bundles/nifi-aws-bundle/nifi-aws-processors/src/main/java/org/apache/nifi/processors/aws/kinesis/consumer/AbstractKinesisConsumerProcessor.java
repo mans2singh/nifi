@@ -32,7 +32,7 @@ import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
 
 /**
  * This class provides processor the base class for kinesis stream consumer.  It declares the
- * property descriptors and supporting methods for the consuerm
+ * property descriptors and supporting methods for the consumer
  */
 public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisProcessor {
 
@@ -40,7 +40,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * The consumer application name
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_APPLICATION_NAME = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Application Name.")
+            .name("Amazon Kinesis Application Name")
             .description("The consumer application name")
             .required(true)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -51,7 +51,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * the final worker id
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_WORKER_ID_PREFIX = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Consumer Worker Id Prefix.")
+            .name("Amazon Kinesis Consumer Worker Id Prefix")
             .description("The Consumer worker id prefix")
             .defaultValue("KinesisConsumerWorkerId")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -72,8 +72,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Default time for renewal of lease by a consumer worker
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_FAILOVER_TIME_MILLIS = new PropertyDescriptor.Builder()
-            .name("Default failover time in millis.")
-            .description("Lease renewal time interval after which the worker is regarded as failed and lease granted to another worker")
+            .name("Default failover time")
+            .description("Lease renewal time interval (millis) after which the worker is regarded as failed and lease granted to another worker")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
             .defaultValue("10000")
@@ -94,7 +94,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Idle time between record reads
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_IDLETIME_BETWEEN_READS_MILLIS = new PropertyDescriptor.Builder()
-            .name("Idle time betweeen record fetch.")
+            .name("Idle time betweeen record fetch")
             .description("Idle time between record reads (millis)")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
@@ -105,7 +105,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Skip empty records call to records processor
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_DONT_CALL_PROCESS_RECORDS_FOR_EMPTY_RECORD_LIST = new PropertyDescriptor.Builder()
-            .name("Skip call if records list is empty record lists.")
+            .name("Skip call if records list is empty record lists")
             .description("Don't call record processor if record list is empty")
             .required(false)
             .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
@@ -138,7 +138,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Clean up lease after shard completion
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_CLEANUP_LEASES_UPON_SHARDS_COMPLETION = new PropertyDescriptor.Builder()
-            .name("Clean up lease on shard completion.")
+            .name("Clean up lease on shard completion")
             .description("Proactively clean up leases to reduce resource tracking")
             .required(false)
             .addValidator(StandardValidators.BOOLEAN_VALIDATOR)

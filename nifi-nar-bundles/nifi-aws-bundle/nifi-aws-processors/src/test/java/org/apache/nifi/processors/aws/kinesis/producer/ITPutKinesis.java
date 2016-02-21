@@ -40,7 +40,7 @@ public class ITPutKinesis {
     private TestRunner runner;
 
     private static final String kinesisStream = "k-stream";
-    
+
     @Before
     public void setUp() throws Exception {
         runner = TestRunners.newTestRunner(PutKinesis.class);
