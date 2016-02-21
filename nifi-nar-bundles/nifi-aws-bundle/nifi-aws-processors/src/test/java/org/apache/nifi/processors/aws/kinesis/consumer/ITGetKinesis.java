@@ -48,7 +48,7 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 
-// Uncomment ignore and make sure that the kafka stream exists before running the test
+// Uncomment ignore and make sure that the kinesis stream exists before running the test
 @Ignore
 public class ITGetKinesis  {
 

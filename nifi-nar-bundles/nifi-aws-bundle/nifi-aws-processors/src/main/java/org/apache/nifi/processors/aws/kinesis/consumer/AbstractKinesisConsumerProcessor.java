@@ -40,7 +40,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * The consumer application name
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_APPLICATION_NAME = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Application Name")
+            .name("Amazon Kinesis application name")
             .description("The consumer application name")
             .required(true)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -51,7 +51,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * the final worker id
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_WORKER_ID_PREFIX = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Consumer Worker Id Prefix")
+            .name("Amazon Kinesis Consumer worker id prefix")
             .description("The Consumer worker id prefix")
             .defaultValue("KinesisConsumerWorkerId")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)

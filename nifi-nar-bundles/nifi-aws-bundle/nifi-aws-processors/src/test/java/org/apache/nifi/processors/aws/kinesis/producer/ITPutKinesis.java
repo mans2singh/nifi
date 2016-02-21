@@ -33,7 +33,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-//Uncomment ignore and make sure that the kafka stream exists before running the test
+//Uncomment ignore and make sure that the kinesis stream exists before running the test
 @Ignore
 public class ITPutKinesis {
 
