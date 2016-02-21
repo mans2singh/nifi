@@ -45,7 +45,7 @@ import com.amazonaws.regions.Regions;
 
 /**
  * This is a base class of Nifi AWS Processors.  This class contains basic property descriptors, AWS credentials and relationships and
- * is not dependent on AmazonWebServiceClient classes.  It's subclasses add support for interacting with AWS with AWS respective
+ * is not dependent on AmazonWebServiceClient classes.  It's subclasses add support for interacting with AWS respective
  * clients.
  *
  * @see AbstractAWSCredentialsProviderProcessor
