@@ -49,6 +49,7 @@ import com.amazonaws.regions.Regions;
 public abstract class AbstractAWSProcessor<ClientType extends AmazonWebServiceClient> extends AbstractBaseAWSProcessor {
 
     protected volatile ClientType client;
+
     protected ClientConfiguration createConfiguration(final ProcessContext context) {
         final ClientConfiguration config = new ClientConfiguration();
         config.setMaxConnections(context.getMaxConcurrentTasks());
@@ -65,6 +66,13 @@ public abstract class AbstractAWSProcessor<ClientType extends AmazonWebServiceCl
             final SSLContext sslContext = sslContextService.createSSLContext(SSLContextService.ClientAuth.NONE);
             SdkTLSSocketFactory sdkTLSSocketFactory = new SdkTLSSocketFactory(sslContext, null);
             config.getApacheHttpClientConfig().setSslSocketFactory(sdkTLSSocketFactory);
+        }
+
+        if (context.getProperty(PROXY_HOST).isSet()) {
+            String proxyHost = context.getProperty(PROXY_HOST).getValue();
+            config.setProxyHost(proxyHost);
+            Integer proxyPort = context.getProperty(PROXY_HOST_PORT).asInteger();
+            config.setProxyPort(proxyPort);
         }
 
         return config;

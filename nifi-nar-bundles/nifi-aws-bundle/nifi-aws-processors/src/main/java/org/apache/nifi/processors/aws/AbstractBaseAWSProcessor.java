@@ -118,6 +118,22 @@ public abstract class AbstractBaseAWSProcessor extends AbstractSessionFactoryPro
                 .required(false)
                 .addValidator(StandardValidators.URL_VALIDATOR)
                 .build();
+    public static final PropertyDescriptor PROXY_HOST = new PropertyDescriptor.Builder()
+            .name("Proxy Host")
+            .description("Proxy host name or IP")
+            .expressionLanguageSupported(true)
+            .required(false)
+            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .build();
+
+    public static final PropertyDescriptor PROXY_HOST_PORT = new PropertyDescriptor.Builder()
+            .name("Proxy Host Port")
+            .description("Proxy host port")
+            .expressionLanguageSupported(true)
+            .required(false)
+            .addValidator(StandardValidators.PORT_VALIDATOR)
+            .build();
+
     protected volatile Region region;
     protected static final Protocol DEFAULT_PROTOCOL = Protocol.HTTPS;
     protected static final String DEFAULT_USER_AGENT = "NiFi";
@@ -163,6 +179,7 @@ public abstract class AbstractBaseAWSProcessor extends AbstractSessionFactoryPro
 
     public abstract void onTrigger(final ProcessContext context, final ProcessSession session) throws ProcessException;
 
+
     @Override
     protected Collection<ValidationResult> customValidate(final ValidationContext validationContext) {
         final List<ValidationResult> problems = new ArrayList<>(super.customValidate(validationContext));
@@ -176,6 +193,12 @@ public abstract class AbstractBaseAWSProcessor extends AbstractSessionFactoryPro
         final boolean credentialsFileSet = validationContext.getProperty(CREDENTIALS_FILE).isSet();
         if ((secretKeySet || accessKeySet) && credentialsFileSet) {
             problems.add(new ValidationResult.Builder().input("Access Key").valid(false).explanation("Cannot set both Credentials File and Secret Key/Access Key").build());
+        }
+
+        final boolean proxyHostSet = validationContext.getProperty(PROXY_HOST).isSet();
+        final boolean proxyHostPortSet = validationContext.getProperty(PROXY_HOST_PORT).isSet();
+        if ( ((!proxyHostSet) && proxyHostPortSet) || (proxyHostSet && (!proxyHostPortSet)) ) {
+            problems.add(new ValidationResult.Builder().input("Proxy Host Port").valid(false).explanation("Both proxy host and port must be set").build());
         }
 
         return problems;

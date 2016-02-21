@@ -61,8 +61,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * The starting point in the stream for the consumer
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_INITIAL_POSITION_IN_STREAM = new PropertyDescriptor.Builder()
-            .name("Initial position in stream.")
-            .description("Initial position in stream")
+            .name("Initial position in stream")
+            .description("Initial position in stream from which to start getting events")
             .required(false)
             .defaultValue(InitialPositionInStream.LATEST.name())
             .allowableValues(getInitialPositions())
@@ -95,7 +95,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_IDLETIME_BETWEEN_READS_MILLIS = new PropertyDescriptor.Builder()
             .name("Idle time betweeen record fetch.")
-            .description("Idle time between record reads in millis")
+            .description("Idle time between record reads (millis)")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
             .defaultValue("1000")
@@ -106,7 +106,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_DONT_CALL_PROCESS_RECORDS_FOR_EMPTY_RECORD_LIST = new PropertyDescriptor.Builder()
             .name("Skip call if records list is empty record lists.")
-            .description("Don't call recrod procedssor if record list is empty")
+            .description("Don't call record processor if record list is empty")
             .required(false)
             .addValidator(StandardValidators.BOOLEAN_VALIDATOR)
             .defaultValue("true")
@@ -116,7 +116,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Polling interval for parent shard
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_PARENT_SHARD_POLL_INTERVAL_MILLIS = new PropertyDescriptor.Builder()
-            .name("Parent shart poll interval.")
+            .name("Parent shart poll interval")
             .description("Interval between polling to check for parent shard completion (millis)")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
@@ -127,8 +127,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Sync shard interval
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_SHARD_SYNC_INTERVAL_MILLIS = new PropertyDescriptor.Builder()
-            .name("Shard sync interval in millis.")
-            .description("Sync interval for shard tasks")
+            .name("Shard sync interval")
+            .description("Sync interval for shard tasks (millis)")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
             .defaultValue("60000")
@@ -149,8 +149,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Back off time interval in case of failures
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_TASK_BACKOFF_TIME_MILLIS = new PropertyDescriptor.Builder()
-            .name("Back off time on failure (millis)")
-            .description("Backoff time interval on failure")
+            .name("Back off time on failure")
+            .description("Backoff time interval on failure (millis)")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
             .defaultValue("500")
@@ -160,8 +160,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Metrics buffer interval in millis
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_METRICS_BUFFER_TIME_MILLIS = new PropertyDescriptor.Builder()
-            .name("Max metrics buffer interal in millis")
-            .description("Interval for which metrics are buffered in millis")
+            .name("Max metrics buffer interal")
+            .description("Interval for which metrics are buffered (millis)")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
             .defaultValue("10000")
@@ -171,7 +171,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Buffer metrics max count
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_METRICS_MAX_QUEUE_SIZE = new PropertyDescriptor.Builder()
-            .name("Max metrics buffer count.")
+            .name("Max metrics buffer count")
             .description("Buffer max count for metrics")
             .required(false)
             .addValidator(StandardValidators.INTEGER_VALIDATOR)
