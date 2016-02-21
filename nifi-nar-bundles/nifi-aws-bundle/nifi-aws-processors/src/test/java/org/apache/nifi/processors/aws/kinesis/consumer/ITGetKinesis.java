@@ -30,12 +30,14 @@ import com.amazonaws.services.kinesis.model.Record;
 
 import org.apache.nifi.processors.aws.AbstractBaseAWSProcessor;
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderControllerService;
+import org.apache.nifi.processors.aws.kinesis.KinesisHelper;
 import org.apache.nifi.provenance.ProvenanceEventRecord;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -46,13 +48,15 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 
-public class ITGetKinesis {
+// Uncomment ignore and make sure that the kafka stream exists before running the test
+@Ignore
+public class ITGetKinesis  {
 
     private TestRunner runner;
     private GetKinesis getKinesis;
     private IRecordProcessorCheckpointer mockRecordProcessorCheckPointer;
-    protected final static String CREDENTIALS_FILE = System.getProperty("user.home") + "/aws-credentials.properties";
-
+    private static final String kinesisStream = "k-stream";
+    
     @Before
     public void setUp() throws Exception {
         mockRecordProcessorCheckPointer = Mockito.mock(IRecordProcessorCheckpointer.class);
@@ -61,7 +65,7 @@ public class ITGetKinesis {
         final AWSCredentialsProviderControllerService serviceImpl = new AWSCredentialsProviderControllerService();
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
         runner.setProperty(serviceImpl, AbstractBaseAWSProcessor.CREDENTIALS_FILE,
-                CREDENTIALS_FILE);
+                KinesisHelper.CREDENTIALS_FILE);
         runner.enableControllerService(serviceImpl);
 
         runner.assertValid(serviceImpl);
@@ -70,6 +74,7 @@ public class ITGetKinesis {
 
     @After
     public void tearDown() throws Exception {
+    	getKinesis.onShutdown();
         runner = null;
         getKinesis = null;
     }
@@ -79,8 +84,8 @@ public class ITGetKinesis {
      */
     @Test
     public void testGetKinesisInvokeOnTriggerIgnored() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "test application");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
         runner.enqueue("test".getBytes());
@@ -95,7 +100,7 @@ public class ITGetKinesis {
      */
     @Test
     public void testGetKinesisInvokeProcessRecordsWithOneRecord() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
         runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -139,13 +144,12 @@ public class ITGetKinesis {
 
         assertEquals("one item", 1, events.size());
         assertTrue("Should start with kinesis transferuri", events.get(0).getTransitUri().startsWith("kinesis"));
-        getKinesis.onShutdown();
     }
 
 
     @Test
     public void testGetKinesisInvokeProcessRecordsWithTwoRecord() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
         runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -203,7 +207,7 @@ public class ITGetKinesis {
 
     @Test
     public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithSecondRecordDataNull() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
         runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -250,9 +254,9 @@ public class ITGetKinesis {
         getKinesis.onShutdown();
     }
 
-     @Test
+    @Test
     public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithFirstRecordDataNull() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
         runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -291,7 +295,7 @@ public class ITGetKinesis {
 
     @Test
     public void testGetKinesisShutdown() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
         runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();

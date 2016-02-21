@@ -24,25 +24,30 @@ import java.util.Map;
 
 import org.apache.nifi.processors.aws.AbstractBaseAWSProcessor;
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderControllerService;
+import org.apache.nifi.processors.aws.kinesis.KinesisHelper;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
+//Uncomment ignore and make sure that the kafka stream exists before running the test
+@Ignore
 public class ITPutKinesis {
 
     private TestRunner runner;
-    protected final static String CREDENTIALS_FILE = System.getProperty("user.home") + "/aws-credentials.properties";
 
+    private static final String kinesisStream = "k-stream";
+    
     @Before
     public void setUp() throws Exception {
         runner = TestRunners.newTestRunner(PutKinesis.class);
         final AWSCredentialsProviderControllerService serviceImpl = new AWSCredentialsProviderControllerService();
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
         runner.setProperty(serviceImpl, AbstractBaseAWSProcessor.CREDENTIALS_FILE,
-                CREDENTIALS_FILE);
+                KinesisHelper.CREDENTIALS_FILE);
         runner.enableControllerService(serviceImpl);
 
         runner.assertValid(serviceImpl);
@@ -59,7 +64,7 @@ public class ITPutKinesis {
      */
     @Test
     public void testIntegrationSuccessWithPartitionKey() throws Exception {
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
         runner.assertValid();
         runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
@@ -83,7 +88,7 @@ public class ITPutKinesis {
 
     @Test
     public void testIntegrationSuccessWithPartitionKeyDefaultSetting() throws Exception {
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
         runner.assertValid();
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
@@ -106,7 +111,7 @@ public class ITPutKinesis {
 
     @Test
     public void testIntegrationSuccessWithOutPartitionKey() throws Exception {
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
         runner.assertValid();
         runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);

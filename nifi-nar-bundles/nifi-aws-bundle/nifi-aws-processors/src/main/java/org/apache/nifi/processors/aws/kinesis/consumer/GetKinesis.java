@@ -197,7 +197,7 @@ public class GetKinesis extends AbstractKinesisConsumerProcessor implements Reco
             if ( flowFile != null ) {
                 session.remove(flowFile);
             }
-            getLogger().error("Error while handling record: " + e.getMessage(), e);
+            getLogger().error("Error while handling record: " + e.getMessage());
         } finally {
             try {
                 if (lastRecordProcessed != null)
