@@ -80,7 +80,7 @@ public class ITGetKinesis {
      */
     @Test
     public void testGetKinesisInvokeOnTriggerIgnored() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
         runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "test application");
 
         runner.assertValid();
@@ -95,9 +95,9 @@ public class ITGetKinesis {
      * Comment out ignore for integration tests (requires creds files)
      */
     @Test
-//    @Ignore
+    @Ignore
     public void testGetKinesisInvokeProcessRecordsWithOneRecord() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
         runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -146,9 +146,9 @@ public class ITGetKinesis {
 
 
     @Test
-//    @Ignore
+    @Ignore
     public void testGetKinesisInvokeProcessRecordsWithTwoRecord() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
         runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -204,10 +204,10 @@ public class ITGetKinesis {
         getKinesis.onShutdown();
     }
 
-    @Test
-//  @Ignore
+  @Test
+  @Ignore
   public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithSecondRecordDataNull() throws Exception {
-      runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+      runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
       runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
       runner.assertValid();
@@ -254,10 +254,10 @@ public class ITGetKinesis {
       getKinesis.onShutdown();
   }
 
-    @Test
-//  @Ignore
+  @Test
+  @Ignore
   public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithFirstRecordDataNull() throws Exception {
-      runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+      runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
       runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
       runner.assertValid();
@@ -294,10 +294,10 @@ public class ITGetKinesis {
       getKinesis.onShutdown();
   }
 
-    @Test
-//  @Ignore
+  @Test
+  @Ignore
   public void testGetKinesisShutdown() throws Exception {
-      runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+      runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
       runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
       runner.assertValid();
