@@ -80,7 +80,7 @@ public class ITGetKinesis {
      */
     @Test
     public void testGetKinesisInvokeOnTriggerIgnored() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
         runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "test application");
 
         runner.assertValid();
@@ -95,9 +95,8 @@ public class ITGetKinesis {
      * Comment out ignore for integration tests (requires creds files)
      */
     @Test
-    @Ignore
     public void testGetKinesisInvokeProcessRecordsWithOneRecord() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
         runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -146,9 +145,8 @@ public class ITGetKinesis {
 
 
     @Test
-    @Ignore
     public void testGetKinesisInvokeProcessRecordsWithTwoRecord() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
         runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
@@ -204,118 +202,115 @@ public class ITGetKinesis {
         getKinesis.onShutdown();
     }
 
-  @Test
-  @Ignore
-  public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithSecondRecordDataNull() throws Exception {
-      runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
-      runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
+    @Test
+    public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithSecondRecordDataNull() throws Exception {
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
-      runner.assertValid();
-      runner.enqueue("hello".getBytes());
-      runner.run(1);
+        runner.assertValid();
+        runner.enqueue("hello".getBytes());
+        runner.run(1);
 
-      List<Record> records = new ArrayList<>();
-      Record record1 = new Record()
+        List<Record> records = new ArrayList<>();
+        Record record1 = new Record()
           .withApproximateArrivalTimestamp(new Date(0)).withData(ByteBuffer.wrap("hello1".getBytes()))
           .withPartitionKey("abcd").withSequenceNumber("seq1");
-      Record record2 = new Record()
+        Record record2 = new Record()
               .withApproximateArrivalTimestamp(new Date(0)).withData(null)
               .withPartitionKey("abcd").withSequenceNumber("seq2");
 
-      UserRecord userRecord1 = new UserRecord(record1);
-      UserRecord userRecord2 = new UserRecord(record2);
-      records.add(userRecord1);
-      records.add(userRecord2);
-      ProcessRecordsInput input = new ProcessRecordsInput()
+        UserRecord userRecord1 = new UserRecord(record1);
+        UserRecord userRecord2 = new UserRecord(record2);
+        records.add(userRecord1);
+        records.add(userRecord2);
+        ProcessRecordsInput input = new ProcessRecordsInput()
               .withCheckpointer(mockRecordProcessorCheckPointer)
               .withRecords(records).withMillisBehindLatest(5L);
-      ExtendedSequenceNumber esn = new ExtendedSequenceNumber("seq1",10L);
-      InitializationInput initializationInput = new InitializationInput().withShardId("shard1")
+        ExtendedSequenceNumber esn = new ExtendedSequenceNumber("seq1",10L);
+        InitializationInput initializationInput = new InitializationInput().withShardId("shard1")
           .withExtendedSequenceNumber(esn);
 
-      getKinesis.processRecords(input, initializationInput);
+        getKinesis.processRecords(input, initializationInput);
 
-      runner.assertAllFlowFilesTransferred(GetKinesis.REL_SUCCESS);
+        runner.assertAllFlowFilesTransferred(GetKinesis.REL_SUCCESS);
 
-      Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint(userRecord1);
+        Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint(userRecord1);
 
-      final List<MockFlowFile> getFlowFiles = runner.getFlowFilesForRelationship(GetKinesis.REL_SUCCESS);
-      assertEquals("size should be eq", 1, getFlowFiles.size());
+        final List<MockFlowFile> getFlowFiles = runner.getFlowFilesForRelationship(GetKinesis.REL_SUCCESS);
+        assertEquals("size should be eq", 1, getFlowFiles.size());
 
-      Map<String, String> attributes = getFlowFiles.get(0).getAttributes();
-      assertEquals("abcd",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY));
-      assertEquals("seq1",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER));
-      assertEquals("5",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
-      assertEquals("0",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
-      assertTrue(attributes.containsKey(GetKinesis.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
-      assertEquals("0",attributes.get(GetKinesis.KINESIS_CONSUMER_RECORD_NUBMER));
-      getFlowFiles.get(0).assertContentEquals("hello1".getBytes());
+        Map<String, String> attributes = getFlowFiles.get(0).getAttributes();
+        assertEquals("abcd",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY));
+        assertEquals("seq1",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER));
+        assertEquals("5",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
+        assertEquals("0",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
+        assertTrue(attributes.containsKey(GetKinesis.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
+        assertEquals("0",attributes.get(GetKinesis.KINESIS_CONSUMER_RECORD_NUBMER));
+        getFlowFiles.get(0).assertContentEquals("hello1".getBytes());
 
-      getKinesis.onShutdown();
-  }
+        getKinesis.onShutdown();
+    }
 
-  @Test
-  @Ignore
-  public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithFirstRecordDataNull() throws Exception {
-      runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
-      runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
+     @Test
+    public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithFirstRecordDataNull() throws Exception {
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
-      runner.assertValid();
-      runner.enqueue("hello".getBytes());
-      runner.run(1);
+        runner.assertValid();
+        runner.enqueue("hello".getBytes());
+        runner.run(1);
 
-      List<Record> records = new ArrayList<>();
-      Record record2 = new Record()
-          .withApproximateArrivalTimestamp(new Date(0)).withData(ByteBuffer.wrap("hello1".getBytes()))
-          .withPartitionKey("abcd").withSequenceNumber("seq1");
-      Record record1 = new Record()
-              .withApproximateArrivalTimestamp(new Date(0)).withData(null)
-              .withPartitionKey("abcd").withSequenceNumber("seq2");
+        List<Record> records = new ArrayList<>();
+        Record record2 = new Record()
+            .withApproximateArrivalTimestamp(new Date(0)).withData(ByteBuffer.wrap("hello1".getBytes()))
+            .withPartitionKey("abcd").withSequenceNumber("seq1");
+        Record record1 = new Record()
+             .withApproximateArrivalTimestamp(new Date(0)).withData(null)
+             .withPartitionKey("abcd").withSequenceNumber("seq2");
 
-      UserRecord userRecord1 = new UserRecord(record1);
-      UserRecord userRecord2 = new UserRecord(record2);
-      records.add(userRecord1);
-      records.add(userRecord2);
-      ProcessRecordsInput input = new ProcessRecordsInput()
-              .withCheckpointer(mockRecordProcessorCheckPointer)
-              .withRecords(records).withMillisBehindLatest(5L);
-      ExtendedSequenceNumber esn = new ExtendedSequenceNumber("seq1",10L);
-      InitializationInput initializationInput = new InitializationInput().withShardId("shard1")
-          .withExtendedSequenceNumber(esn);
+        UserRecord userRecord1 = new UserRecord(record1);
+        UserRecord userRecord2 = new UserRecord(record2);
+        records.add(userRecord1);
+        records.add(userRecord2);
+        ProcessRecordsInput input = new ProcessRecordsInput()
+             .withCheckpointer(mockRecordProcessorCheckPointer)
+             .withRecords(records).withMillisBehindLatest(5L);
+        ExtendedSequenceNumber esn = new ExtendedSequenceNumber("seq1",10L);
+        InitializationInput initializationInput = new InitializationInput().withShardId("shard1")
+            .withExtendedSequenceNumber(esn);
 
-      getKinesis.processRecords(input, initializationInput);
+        getKinesis.processRecords(input, initializationInput);
 
-      Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint();
+        Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint();
 
-      final List<MockFlowFile> getFlowFilesSuccess = runner.getFlowFilesForRelationship(GetKinesis.REL_SUCCESS);
-      assertEquals("success size should be eq", 0, getFlowFilesSuccess.size());
-      final List<MockFlowFile> getFlowFilesFailed = runner.getFlowFilesForRelationship(GetKinesis.REL_FAILURE);
-      assertEquals("failed size should be eq", 0, getFlowFilesFailed.size());
-      getKinesis.onShutdown();
-  }
+        final List<MockFlowFile> getFlowFilesSuccess = runner.getFlowFilesForRelationship(GetKinesis.REL_SUCCESS);
+        assertEquals("success size should be eq", 0, getFlowFilesSuccess.size());
+        final List<MockFlowFile> getFlowFilesFailed = runner.getFlowFilesForRelationship(GetKinesis.REL_FAILURE);
+        assertEquals("failed size should be eq", 0, getFlowFilesFailed.size());
+        getKinesis.onShutdown();
+    }
 
-  @Test
-  @Ignore
-  public void testGetKinesisShutdown() throws Exception {
-      runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "k-stream");
-      runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
+    @Test
+    public void testGetKinesisShutdown() throws Exception {
+        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
+        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
-      runner.assertValid();
-      runner.enqueue("hello".getBytes());
-      runner.run(1);
+        runner.assertValid();
+        runner.enqueue("hello".getBytes());
+        runner.run(1);
 
-      ExtendedSequenceNumber esn = new ExtendedSequenceNumber("seq1",10L);
-      InitializationInput initializationInput = new InitializationInput().withShardId("shard1")
-          .withExtendedSequenceNumber(esn);
-      ShutdownInput shutdownInput = new ShutdownInput();
-      ShutdownReason reason = ShutdownReason.TERMINATE;
+        ExtendedSequenceNumber esn = new ExtendedSequenceNumber("seq1",10L);
+        InitializationInput initializationInput = new InitializationInput().withShardId("shard1")
+            .withExtendedSequenceNumber(esn);
+        ShutdownInput shutdownInput = new ShutdownInput();
+        ShutdownReason reason = ShutdownReason.TERMINATE;
 
-      shutdownInput.withCheckpointer(mockRecordProcessorCheckPointer)
-          .withShutdownReason(reason);
-      getKinesis.shutdown(shutdownInput, initializationInput);
+        shutdownInput.withCheckpointer(mockRecordProcessorCheckPointer)
+            .withShutdownReason(reason);
+        getKinesis.shutdown(shutdownInput, initializationInput);
 
-      Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint();
+        Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint();
 
-      getKinesis.onShutdown();
-  }
+        getKinesis.onShutdown();
+    }
 }

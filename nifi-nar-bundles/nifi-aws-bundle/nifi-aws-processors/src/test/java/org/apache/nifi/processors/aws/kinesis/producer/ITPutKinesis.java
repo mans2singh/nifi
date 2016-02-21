@@ -59,9 +59,8 @@ public class ITPutKinesis {
      * Comment out ignore for integration tests (requires creds files)
      */
     @Test
-    @Ignore
     public void testIntegrationSuccessWithPartitionKey() throws Exception {
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "k-stream");
+        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
         runner.assertValid();
         runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
@@ -84,9 +83,8 @@ public class ITPutKinesis {
     }
 
     @Test
-    @Ignore
     public void testIntegrationSuccessWithPartitionKeyDefaultSetting() throws Exception {
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "k-stream");
+        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
         runner.assertValid();
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
@@ -108,9 +106,8 @@ public class ITPutKinesis {
     }
 
     @Test
-    @Ignore
     public void testIntegrationSuccessWithOutPartitionKey() throws Exception {
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "k-stream");
+        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "kcontest-stream");
         runner.assertValid();
         runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
@@ -134,7 +131,6 @@ public class ITPutKinesis {
      * Comment out ignore for integration tests (requires creds files)
      */
     @Test
-    @Ignore
     public void testIntegrationFailedBadStreamName() throws Exception {
         runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "bad-stream");
         runner.assertValid();
