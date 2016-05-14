@@ -151,14 +151,6 @@ public abstract class AbstractBaseAWSProcessor extends AbstractSessionFactoryPro
         return (AllowableValue[]) values.toArray(new AllowableValue[values.size()]);
     }
 
-    public AbstractBaseAWSProcessor() {
-        super();
-    }
-
-    @OnScheduled
-    public void onScheduled(final ProcessContext context) {
-    }
-
     @Override
     public Set<Relationship> getRelationships() {
         return relationships;

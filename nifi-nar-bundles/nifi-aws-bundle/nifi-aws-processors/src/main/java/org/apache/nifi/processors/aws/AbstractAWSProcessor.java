@@ -102,7 +102,6 @@ public abstract class AbstractAWSProcessor<ClientType extends AmazonWebServiceCl
 
     @OnScheduled
     public void onScheduled(final ProcessContext context) {
-        super.onScheduled(context);
         final ClientType awsClient = createClient(context, getCredentials(context), createConfiguration(context));
         this.client = awsClient;
         intializeRegionAndEndpoint(context);
