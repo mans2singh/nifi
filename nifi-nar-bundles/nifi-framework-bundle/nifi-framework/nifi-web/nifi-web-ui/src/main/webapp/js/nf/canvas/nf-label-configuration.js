@@ -19,7 +19,7 @@
 
 nf.LabelConfiguration = (function () {
 
-    var labelUri = '';
+    var labelId = '';
 
     return {
         /**
@@ -33,29 +33,35 @@ nf.LabelConfiguration = (function () {
                     buttonText: 'Apply',
                     handler: {
                         click: function () {
-                            var revision = nf.Client.getRevision();
+                            // get the label data
+                            var labelData = d3.select('#id-' + labelId).datum();
 
                             // get the new values
                             var labelValue = $('#label-value').val();
                             var fontSize = $('#label-font-size').combo('getSelectedOption');
 
+                            // build the label entity
+                            var labelEntity = {
+                                'revision': nf.Client.getRevision(labelData),
+                                'component': {
+                                    'id': labelId,
+                                    'label': labelValue,
+                                    'style': {
+                                        'font-size': fontSize.value
+                                    }
+                                }
+                            };
+
                             // save the new label value
                             $.ajax({
                                 type: 'PUT',
-                                url: labelUri,
-                                data: {
-                                    'version': revision.version,
-                                    'clientId': revision.clientId,
-                                    'label': labelValue,
-                                    'style[font-size]': fontSize.value
-                                },
-                                dataType: 'json'
+                                url: labelData.component.uri,
+                                data: JSON.stringify(labelEntity),
+                                dataType: 'json',
+                                contentType: 'application/json'
                             }).done(function (response) {
-                                // update the revision
-                                nf.Client.setRevision(response.revision);
-
                                 // get the label out of the response
-                                nf.Label.set(response.label);
+                                nf.Label.set(response);
                             }).fail(nf.Common.handleAjaxError);
 
                             // reset and hide the dialog
@@ -72,7 +78,7 @@ nf.LabelConfiguration = (function () {
                 }],
                 handler: {
                     close: function () {
-                        labelUri = '';
+                        labelId = '';
                     }
                 }
             }).draggable({
@@ -130,7 +136,7 @@ nf.LabelConfiguration = (function () {
                 }
 
                 // store the label uri
-                labelUri = selectionData.component.uri;
+                labelId = selectionData.id;
 
                 // populate the dialog
                 $('#label-value').val(labelValue);

@@ -17,7 +17,7 @@
 package org.apache.nifi.processor.util.listen.handler.socket;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.nifi.logging.ProcessorLog;
+import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.util.listen.dispatcher.AsyncChannelDispatcher;
 import org.apache.nifi.processor.util.listen.dispatcher.SocketChannelAttachment;
 import org.apache.nifi.processor.util.listen.event.Event;
@@ -50,7 +50,7 @@ public class StandardSocketChannelHandler<E extends Event<SocketChannel>> extend
                                         final Charset charset,
                                         final EventFactory<E> eventFactory,
                                         final BlockingQueue<E> events,
-                                        final ProcessorLog logger) {
+                                        final ComponentLog logger) {
         super(key, dispatcher, charset, eventFactory, events, logger);
     }
 
@@ -131,20 +131,21 @@ public class StandardSocketChannelHandler<E extends Event<SocketChannel>> extend
             // NOTE: For higher throughput, the looking for \n and copying into the byte stream could be improved
             // Pull data out of buffer and cram into byte array
             byte currByte = socketBuffer.get();
-            currBytes.write(currByte);
 
             // check if at end of a message
             if (currByte == getDelimiter()) {
-                final SocketChannelResponder response = new SocketChannelResponder(socketChannel);
-                final Map<String,String> metadata = EventFactoryUtil.createMapWithSender(sender.toString());
+                if (currBytes.size() > 0) {
+                    final SocketChannelResponder response = new SocketChannelResponder(socketChannel);
+                    final Map<String, String> metadata = EventFactoryUtil.createMapWithSender(sender.toString());
+                    final E event = eventFactory.create(currBytes.toByteArray(), metadata, response);
+                    events.offer(event);
+                    currBytes.reset();
 
-                // queue the raw event blocking until space is available, reset the buffer
-                final E event = eventFactory.create(currBytes.toByteArray(), metadata, response);
-                events.put(event);
-                currBytes.reset();
-
-                // Mark this as the start of the next message
-                socketBuffer.mark();
+                    // Mark this as the start of the next message
+                    socketBuffer.mark();
+                }
+            } else {
+                currBytes.write(currByte);
             }
         }
     }

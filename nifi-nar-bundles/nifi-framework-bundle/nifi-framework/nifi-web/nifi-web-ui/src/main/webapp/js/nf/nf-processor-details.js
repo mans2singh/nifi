@@ -140,12 +140,12 @@ nf.ProcessorDetails = (function () {
             // load the properties for the specified processor
             var getProcessor = $.ajax({
                 type: 'GET',
-                url: '../nifi-api/controller/process-groups/' + encodeURIComponent(groupId) + '/processors/' + encodeURIComponent(processorId),
+                url: '../nifi-api/processors/' + encodeURIComponent(processorId),
                 dataType: 'json'
             }).done(function (response) {
-                if (nf.Common.isDefinedAndNotNull(response.processor)) {
+                if (nf.Common.isDefinedAndNotNull(response.component)) {
                     // get the processor details
-                    var details = response.processor;
+                    var details = response.component;
 
                     // record the processor details
                     $('#processor-details').data('processorDetails', details);
@@ -199,7 +199,7 @@ nf.ProcessorDetails = (function () {
             // get the processor history
             var getProcessorHistory = $.ajax({
                 type: 'GET',
-                url: '../nifi-api/controller/history/processors/' + encodeURIComponent(processorId),
+                url: '../nifi-api/history/processors/' + encodeURIComponent(processorId),
                 dataType: 'json'
             }).done(function (response) {
                 var processorHistory = response.componentHistory;

@@ -16,19 +16,14 @@
  */
 package org.apache.nifi.connectable;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.nifi.controller.Heartbeater;
+import org.apache.nifi.authorization.Resource;
+import org.apache.nifi.authorization.resource.Authorizable;
+import org.apache.nifi.authorization.resource.ResourceFactory;
+import org.apache.nifi.authorization.resource.ResourceType;
 import org.apache.nifi.controller.ProcessScheduler;
 import org.apache.nifi.controller.StandardFlowFileQueue;
 import org.apache.nifi.controller.queue.FlowFileQueue;
@@ -42,6 +37,17 @@ import org.apache.nifi.processor.FlowFileFilter;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.provenance.ProvenanceEventRepository;
 import org.apache.nifi.util.NiFiProperties;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 /**
  * Models a connection between connectable components. A connection may contain one or more relationships that map the source component to the destination component.
@@ -71,7 +77,7 @@ public final class StandardConnection implements Connection {
         relationships = new AtomicReference<>(Collections.unmodifiableCollection(builder.relationships));
         scheduler = builder.scheduler;
         flowFileQueue = new StandardFlowFileQueue(id, this, builder.flowFileRepository, builder.provenanceRepository, builder.resourceClaimManager,
-            scheduler, builder.swapManager, builder.eventReporter, NiFiProperties.getInstance().getQueueSwapThreshold(), builder.heartbeater);
+            scheduler, builder.swapManager, builder.eventReporter, NiFiProperties.getInstance().getQueueSwapThreshold());
         hashCode = new HashCodeBuilder(7, 67).append(id).toHashCode();
     }
 
@@ -93,6 +99,27 @@ public final class StandardConnection implements Connection {
     @Override
     public void setName(final String name) {
         this.name.set(name);
+    }
+
+    @Override
+    public Authorizable getParentAuthorizable() {
+        return getSource();
+    }
+
+    @Override
+    public Resource getResource() {
+        String name = getName();
+
+        final Collection<Relationship> relationships = getRelationships();
+        if (name == null && CollectionUtils.isNotEmpty(relationships)) {
+            name = StringUtils.join(relationships.stream().map(relationship -> relationship.getName()).collect(Collectors.toSet()), ", ");
+        }
+
+        if (name == null) {
+            name = "Connection";
+        }
+
+        return ResourceFactory.getComponentResource(ResourceType.Connection, getIdentifier(), name);
     }
 
     @Override
@@ -270,7 +297,6 @@ public final class StandardConnection implements Connection {
         private FlowFileRepository flowFileRepository;
         private ProvenanceEventRepository provenanceRepository;
         private ResourceClaimManager resourceClaimManager;
-        private Heartbeater heartbeater;
 
         public Builder(final ProcessScheduler scheduler) {
             this.scheduler = scheduler;
@@ -303,11 +329,6 @@ public final class StandardConnection implements Connection {
 
         public Builder name(final String name) {
             this.name = name;
-            return this;
-        }
-
-        public Builder heartbeater(final Heartbeater heartbeater) {
-            this.heartbeater = heartbeater;
             return this;
         }
 
@@ -397,6 +418,13 @@ public final class StandardConnection implements Connection {
         if (source.isRunning()) {
             if (!ConnectableType.FUNNEL.equals(source.getConnectableType())) {
                 throw new IllegalStateException("Source of Connection (" + source + ") is running");
+            }
+        }
+
+        final Connectable dest = destination.get();
+        if (dest.isRunning()) {
+            if (!ConnectableType.FUNNEL.equals(dest.getConnectableType())) {
+                throw new IllegalStateException("Destination of Connection (" + dest + ") is running");
             }
         }
     }

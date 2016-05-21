@@ -37,7 +37,11 @@
         <link rel="stylesheet" href="js/jquery/minicolors/jquery.minicolors.css" type="text/css" />
         <link rel="stylesheet" href="js/jquery/slickgrid/css/slick.grid.css" type="text/css" />
         <link rel="stylesheet" href="js/jquery/slickgrid/css/slick-default-theme.css" type="text/css" />
+        <link rel="stylesheet" href="fonts/flowfont/flowfont.css" type="text/css" />
+        <link rel="stylesheet" href="assets/angular-material/angular-material.css" type="text/css" />
+        <link rel="stylesheet" href="assets/font-awesome/css/font-awesome.min.css" type="text/css" />
         <script type="text/javascript" src="js/codemirror/lib/codemirror-compressed.js"></script>
+        <script type="text/javascript" src="js/d3/d3.min.js"></script>
         <script type="text/javascript" src="js/jquery/jquery-2.1.1.min.js"></script>
         <script type="text/javascript" src="js/jquery/ui-smoothness/jquery-ui-1.10.4.min.js"></script>
         <script type="text/javascript" src="js/jquery/jquery.base64.js"></script>
@@ -62,19 +66,30 @@
         <script type="text/javascript" src="js/jquery/slickgrid/slick.dataview.js"></script>
         <script type="text/javascript" src="js/jquery/slickgrid/slick.core.js"></script>
         <script type="text/javascript" src="js/jquery/slickgrid/slick.grid.js"></script>
+        <script type="text/javascript" src="assets/angular/angular.min.js"></script>
+        <script type="text/javascript" src="assets/angular-messages/angular-messages.min.js"></script>
+        <script type="text/javascript" src="assets/angular-resource/angular-resource.min.js"></script>
+        <script type="text/javascript" src="assets/angular-route/angular-route.min.js"></script>
+        <script type="text/javascript" src="assets/angular-aria/angular-aria.min.js"></script>
+        <script type="text/javascript" src="assets/angular-animate/angular-animate.min.js"></script>
+        <script type="text/javascript" src="assets/angular-material/angular-material.min.js"></script>
+        <script type="text/javascript" src="assets/angular-sanitize/angular-sanitize.min.js"></script>
         <script type="text/javascript" src="js/json2.js"></script>
         <script type="text/javascript" src="js/nf/nf-namespace.js?${project.version}"></script>
+        <script type="text/javascript" src="js/nf/nf-ng-namespace.js?${project.version}"></script>
+        <script type="text/javascript" src="js/nf/canvas/nf-ng-canvas-namespace.js?${project.version}"></script>
         ${nf.canvas.script.tags}
         <script type="text/javascript" src="js/jquery/nfeditor/languages/nfel.js?${project.version}"></script>
         <script type="text/javascript" src="js/jquery/nfeditor/jquery.nfeditor.js?${project.version}"></script>
     </head>
-    <body id="canvas-body">
+    <body ng-controller="ngCanvasAppCtrl" id="canvas-body">
         <div id="splash">
             <img id="splash-img" src="images/loadAnimation.gif" alt="Loading..."/>
         </div>
         <jsp:include page="/WEB-INF/partials/message-pane.jsp"/>
         <jsp:include page="/WEB-INF/partials/banners-main.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/canvas-header.jsp"/>
+        <jsp:include page="/WEB-INF/partials/canvas/flow-status.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/about-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/ok-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/yes-no-dialog.jsp"/>
@@ -91,7 +106,6 @@
         <jsp:include page="/WEB-INF/partials/canvas/instantiate-template-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/fill-color-dialog.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/connections-dialog.jsp"/>
-        <jsp:include page="/WEB-INF/partials/canvas/flow-status.jsp"/>
         <div id="canvas-container" class="unselectable"></div>
         <div id="canvas-tooltips">
             <div id="processor-tooltips"></div>
@@ -114,8 +128,6 @@
         <jsp:include page="/WEB-INF/partials/canvas/remote-port-configuration.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/port-configuration.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/port-details.jsp"/>
-        <jsp:include page="/WEB-INF/partials/canvas/secure-port-configuration.jsp"/>
-        <jsp:include page="/WEB-INF/partials/canvas/secure-port-details.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/label-configuration.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/connection-configuration.jsp"/>
         <jsp:include page="/WEB-INF/partials/canvas/drop-request-status-dialog.jsp"/>

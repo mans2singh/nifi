@@ -21,7 +21,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.controller.FlowController;
 import org.apache.nifi.controller.ProcessorNode;
 import org.apache.nifi.controller.repository.BatchingSessionFactory;
@@ -32,14 +31,13 @@ import org.apache.nifi.controller.repository.StandardProcessSessionFactory;
 import org.apache.nifi.controller.scheduling.ProcessContextFactory;
 import org.apache.nifi.controller.scheduling.ScheduleState;
 import org.apache.nifi.controller.scheduling.SchedulingAgent;
-import org.apache.nifi.logging.ProcessorLog;
+import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.nar.NarCloseable;
 import org.apache.nifi.processor.ProcessSessionFactory;
 import org.apache.nifi.processor.SimpleProcessLogger;
 import org.apache.nifi.processor.StandardProcessContext;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.util.Connectables;
-import org.apache.nifi.util.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +83,6 @@ public class ContinuallyRunProcessorTask implements Callable<Boolean> {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     public Boolean call() {
         // make sure processor is not yielded
         if (isYielded(procNode)) {
@@ -160,11 +157,11 @@ public class ContinuallyRunProcessorTask implements Callable<Boolean> {
                     }
                 }
             } catch (final ProcessException pe) {
-                final ProcessorLog procLog = new SimpleProcessLogger(procNode.getIdentifier(), procNode.getProcessor());
+                final ComponentLog procLog = new SimpleProcessLogger(procNode.getIdentifier(), procNode.getProcessor());
                 procLog.error("Failed to process session due to {}", new Object[]{pe});
             } catch (final Throwable t) {
-                // Use ProcessorLog to log the event so that a bulletin will be created for this processor
-                final ProcessorLog procLog = new SimpleProcessLogger(procNode.getIdentifier(), procNode.getProcessor());
+                // Use ComponentLog to log the event so that a bulletin will be created for this processor
+                final ComponentLog procLog = new SimpleProcessLogger(procNode.getIdentifier(), procNode.getProcessor());
                 procLog.error("{} failed to process session due to {}", new Object[]{procNode.getProcessor(), t});
                 procLog.warn("Processor Administratively Yielded for {} due to processing failure", new Object[]{schedulingAgent.getAdministrativeYieldDuration()});
                 logger.warn("Administratively Yielding {} due to uncaught Exception: {}", procNode.getProcessor(), t.toString());
@@ -178,7 +175,7 @@ public class ContinuallyRunProcessorTask implements Callable<Boolean> {
                     try {
                         rawSession.commit();
                     } catch (final Exception e) {
-                        final ProcessorLog procLog = new SimpleProcessLogger(procNode.getIdentifier(), procNode.getProcessor());
+                        final ComponentLog procLog = new SimpleProcessLogger(procNode.getIdentifier(), procNode.getProcessor());
                         procLog.error("Failed to commit session {} due to {}; rolling back", new Object[] { rawSession, e.toString() }, e);
 
                         try {
@@ -190,15 +187,6 @@ public class ContinuallyRunProcessorTask implements Callable<Boolean> {
                 }
 
                 final long processingNanos = System.nanoTime() - startNanos;
-
-                // if the processor is no longer scheduled to run and this is the last thread,
-                // invoke the OnStopped methods
-                if (!scheduleState.isScheduled() && scheduleState.getActiveThreadCount() == 1 && scheduleState.mustCallOnStoppedMethods()) {
-                    try (final NarCloseable x = NarCloseable.withNarLoader()) {
-                        ReflectionUtils.quietlyInvokeMethodsWithAnnotations(OnStopped.class, org.apache.nifi.processor.annotation.OnStopped.class, procNode.getProcessor(), processContext);
-                        flowController.heartbeat();
-                    }
-                }
 
                 try {
                     final StandardFlowFileEvent procEvent = new StandardFlowFileEvent(procNode.getIdentifier());

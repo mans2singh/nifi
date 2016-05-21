@@ -39,20 +39,21 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.FlowController;
-import org.apache.nifi.controller.FlowFromDOMFactory;
 import org.apache.nifi.controller.Template;
 import org.apache.nifi.controller.exception.ProcessorInstantiationException;
+import org.apache.nifi.controller.serialization.FlowFromDOMFactory;
 import org.apache.nifi.encrypt.StringEncryptor;
 import org.apache.nifi.processor.Processor;
 import org.apache.nifi.util.DomUtils;
+import org.apache.nifi.web.api.dto.ComponentDTO;
 import org.apache.nifi.web.api.dto.ConnectionDTO;
 import org.apache.nifi.web.api.dto.ControllerServiceDTO;
 import org.apache.nifi.web.api.dto.FlowSnippetDTO;
 import org.apache.nifi.web.api.dto.FunnelDTO;
 import org.apache.nifi.web.api.dto.LabelDTO;
-import org.apache.nifi.web.api.dto.NiFiComponentDTO;
 import org.apache.nifi.web.api.dto.PortDTO;
 import org.apache.nifi.web.api.dto.ProcessGroupDTO;
 import org.apache.nifi.web.api.dto.ProcessorConfigDTO;
@@ -62,7 +63,6 @@ import org.apache.nifi.web.api.dto.RemoteProcessGroupDTO;
 import org.apache.nifi.web.api.dto.RemoteProcessGroupPortDTO;
 import org.apache.nifi.web.api.dto.ReportingTaskDTO;
 import org.apache.nifi.web.api.dto.TemplateDTO;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -248,15 +248,61 @@ public final class FingerprintFactory {
 
         final Element controllerServicesElem = DomUtils.getChild(flowControllerElem, "controllerServices");
         if (controllerServicesElem != null) {
+            final List<ControllerServiceDTO> serviceDtos = new ArrayList<>();
             for (final Element serviceElem : DomUtils.getChildElementsByTagName(controllerServicesElem, "controllerService")) {
-                addControllerServiceFingerprint(builder, serviceElem);
+                final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(serviceElem, encryptor);
+                serviceDtos.add(dto);
+            }
+
+            Collections.sort(serviceDtos, new Comparator<ControllerServiceDTO>() {
+                @Override
+                public int compare(final ControllerServiceDTO o1, final ControllerServiceDTO o2) {
+                    if (o1 == null && o2 == null) {
+                        return 0;
+                    }
+                    if (o1 == null && o2 != null) {
+                        return 1;
+                    }
+                    if (o1 != null && o2 == null) {
+                        return -1;
+                    }
+
+                    return o1.getId().compareTo(o2.getId());
+                }
+            });
+
+            for (final ControllerServiceDTO dto : serviceDtos) {
+                addControllerServiceFingerprint(builder, dto);
             }
         }
 
         final Element reportingTasksElem = DomUtils.getChild(flowControllerElem, "reportingTasks");
         if (reportingTasksElem != null) {
+            final List<ReportingTaskDTO> reportingTaskDtos = new ArrayList<>();
             for (final Element taskElem : DomUtils.getChildElementsByTagName(reportingTasksElem, "reportingTask")) {
-                addReportingTaskFingerprint(builder, taskElem);
+                final ReportingTaskDTO dto = FlowFromDOMFactory.getReportingTask(taskElem, encryptor);
+                reportingTaskDtos.add(dto);
+            }
+
+            Collections.sort(reportingTaskDtos, new Comparator<ReportingTaskDTO>() {
+                @Override
+                public int compare(final ReportingTaskDTO o1, final ReportingTaskDTO o2) {
+                    if (o1 == null && o2 == null) {
+                        return 0;
+                    }
+                    if (o1 == null && o2 != null) {
+                        return 1;
+                    }
+                    if (o1 != null && o2 == null) {
+                        return -1;
+                    }
+
+                    return o1.getId().compareTo(o2.getId());
+                }
+            });
+
+            for (final ReportingTaskDTO dto : reportingTaskDtos) {
+                addReportingTaskFingerprint(builder, dto);
             }
         }
 
@@ -265,6 +311,7 @@ public final class FingerprintFactory {
 
     private StringBuilder addTemplateFingerprint(final StringBuilder builder, final TemplateDTO dto) {
         builder.append(dto.getId());
+        builder.append(dto.getGroupId());
         builder.append(dto.getName());
         builder.append(dto.getDescription());
         final FlowSnippetDTO snippet = dto.getSnippet();
@@ -275,9 +322,9 @@ public final class FingerprintFactory {
     }
 
     private StringBuilder addSnippetFingerprint(final StringBuilder builder, final FlowSnippetDTO snippet) {
-        final Comparator<NiFiComponentDTO> componentComparator = new Comparator<NiFiComponentDTO>() {
+        final Comparator<ComponentDTO> componentComparator = new Comparator<ComponentDTO>() {
             @Override
-            public int compare(final NiFiComponentDTO o1, final NiFiComponentDTO o2) {
+            public int compare(final ComponentDTO o1, final ComponentDTO o2) {
                 if (o1 == null && o2 == null) {
                     return 0;
                 }
@@ -385,6 +432,18 @@ public final class FingerprintFactory {
 
             for (final RemoteProcessGroupDTO remoteGroup : sortedRemoteGroups) {
                 addRemoteProcessGroupFingerprint(builder, remoteGroup);
+            }
+        }
+
+        final Set<ControllerServiceDTO> services = snippet.getControllerServices();
+        if (services == null || services.isEmpty()) {
+            builder.append("NO_CONTROLLER_SERVICES");
+        } else {
+            final List<ControllerServiceDTO> sortedServices = new ArrayList<>(services);
+            Collections.sort(sortedServices, componentComparator);
+
+            for (final ControllerServiceDTO service : sortedServices) {
+                addControllerServiceFingerprint(builder, service);
             }
         }
 
@@ -843,11 +902,6 @@ public final class FingerprintFactory {
         return builder;
     }
 
-    private void addControllerServiceFingerprint(final StringBuilder builder, final Element controllerServiceElem) {
-        final ControllerServiceDTO dto = FlowFromDOMFactory.getControllerService(controllerServiceElem, encryptor);
-        addControllerServiceFingerprint(builder, dto);
-    }
-
     private void addControllerServiceFingerprint(final StringBuilder builder, final ControllerServiceDTO dto) {
         builder.append(dto.getId());
         builder.append(dto.getType());
@@ -870,11 +924,6 @@ public final class FingerprintFactory {
                 builder.append(propName).append("=").append(propValue);
             }
         }
-    }
-
-    private void addReportingTaskFingerprint(final StringBuilder builder, final Element element) {
-        final ReportingTaskDTO dto = FlowFromDOMFactory.getReportingTask(element, encryptor);
-        addReportingTaskFingerprint(builder, dto);
     }
 
     private void addReportingTaskFingerprint(final StringBuilder builder, final ReportingTaskDTO dto) {

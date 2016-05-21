@@ -154,9 +154,6 @@ NiFi provides several different configuration options for security purposes. The
                                 by the NiFi cluster protocol. If the Truststore properties are not set, this must be `false`. Otherwise, a value
                                 of `true` indicates that nodes in the cluster will be authenticated and must have certificates that are trusted
                                 by the Truststores.
-|`nifi.security.anonymous.authorities` | Specifies the roles that should be granted to users that connect over HTTPS anonymously. All users can make
-                                use of anonymous access, however if they have been granted a particular level of access by an administrator
-                                it will take precedence if they access NiFi using a client certificate or once they have logged in.
 |==================================================================================================================================================
 
 Once the above properties have been configured, we can enable the User Interface to be accessed over HTTPS instead of HTTP. This is accomplished
@@ -167,10 +164,10 @@ be accessible from all network interfaces, a value of `0.0.0.0` should be used.
 NOTE: It is important when enabling HTTPS that the `nifi.web.http.port` property be unset.
 
 Similar to `nifi.security.needClientAuth`, the web server can be configured to require certificate based client authentication for users accessing
-the User Interface. In order to do this it must be configured to not support username/password authentication (see below) and not grant access to
-anonymous users (see `nifi.security.anonymous.authorities` above). Either of these options will configure the web server to WANT certificate based client
-authentication. This will allow it to support users with certificates and those without that may be logging in with their credentials or those accessing
-anonymously. If username/password authentication and anonymous access are not configured, the web server will REQUIRE certificate based client authentication.
+the User Interface. In order to do this it must be configured to not support username/password authentication (see below). Either of these options
+will configure the web server to WANT certificate based client authentication. This will allow it to support users with certificates and those without
+that may be logging in with their credentials or those accessing anonymously. If username/password authentication and anonymous access are not configured,
+the web server will REQUIRE certificate based client authentication.
 
 Now that the User Interface has been secured, we can easily secure Site-to-Site connections and inner-cluster communications, as well. This is
 accomplished by setting the `nifi.remote.input.secure` and `nifi.cluster.protocol.is.secure` properties, respectively, to `true`.
@@ -190,6 +187,9 @@ certificates for authenticating users over HTTPS. By default, this property is n
 explicity enabled.
 
 NiFi does not perform user authentication over HTTP. Using HTTP all users will be granted all roles.
+
+Lightweight Directory Access Protocol (LDAP)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Below is an example and description of configuring a Login Identity Provider that integrates with a Directory Server to authenticate users.
 
@@ -254,117 +254,37 @@ nifi.security.user.login.identity.provider=ldap-provider
 |`Authentication Expiration` | The duration of how long the user authentication is valid for. If the user never logs out, they will be required to log back in following this duration.
 |==================================================================================================================================================
 
+[[kerberos_login_identity_provider]]
+Kerberos
+~~~~~~~~
 
-Controlling Levels of Access
-----------------------------
-
-Once NiFi is configured to run securely and an authentication mechanism is configured, it is necessary
-to configure who will have access to the system and what types of access those people will have.
-NiFi controls this through the user of an 'Authority Provider.' The Authority Provider is a pluggable
-mechanism for providing authorizations to different users. Which Authority Provider to use is configured
-using two properties in the _nifi.properties_ file.
-
-The `nifi.authority.provider.configuration.file` property specifies the configuration file for Authority Providers.
-The `nifi.security.user.authority.provider` property indicates which of the configured Authority Providers should be
-used.
-
-By default, the `file-provider` Authority Provider is selected and is configured to use the permissions granted in
-the _authorized-users.xml_ file. This is typically sufficient for instances of NiFi that are run in "standalone" mode.
-If the NiFi instance is configured to run in a cluster, the node will typically use the `cluster-node-provider`
-Provider and the Cluster Manager will typically use the `cluster-ncm-provider` Provider. Both of these Providers
-have a default configuration in the _authority-providers.xml_ file but are commented out.
-
-When using the `cluster-node-provider` Provider, all of the authorization is provided by the Cluster Manager. In this
-way, the configuration only has to be maintained in one place and will be consistent across the entire cluster.
-
-When configuring the Cluster Manager or a standalone node, it is necessary to manually designate an ADMIN user
-in the _authorized-users.xml_ file, which is located in the root installation's conf directory.
-After this ADMIN user has been added, s/he may grant access
-to other users, systems, and other instances of NiFi, through the User Interface (UI) without having to manually edit the _authorized-users.xml_
-file. If you are the administrator, you would add yourself as the ADMIN user in this file.
-
-Open the _authorized-users.xml_ file in a text editor. You will notice that it includes a template
-to guide you, with example entries that are commented out.
-
-It is only necessary to manually add one user, the ADMIN user, to this file.
-So, at a minimum, the following example entry should be included and contain the user Distinguished Name (DN)
-in place of "user dn - read only and admin":
+Below is an example and description of configuring a Login Identity Provider that integrates with a Kerberos Key Distribution Center (KDC) to authenticate users.
 
 ----
-<users>
-    <user dn="[user dn - read only and admin]">
-        <role name="ROLE_ADMIN"/>
-    </user>
-</users>
+<provider>
+    <identifier>kerberos-provider</identifier>
+    <class>org.apache.nifi.kerberos.KerberosProvider</class>
+    <property name="Default Realm">NIFI.APACHE.ORG</property>
+    <property name="Kerberos Config File">/etc/krb5.conf</property>
+    <property name="Authentication Expiration">12 hours</property>
+</provider>
 ----
 
-Here is an example entry using the name John Smith:
+With this configuration, username/password authentication can be enabled by referencing this provider in _nifi.properties_.
 
 ----
-<users>
-    <user dn="cn=John Smith,ou=people,dc=example,dc=com">
-        <role name="ROLE_ADMIN"/>
-    </user>
-</users>
+nifi.security.user.login.identity.provider=kerberos-provider
 ----
-
-After the _authorized-users.xml_ file has been edited and saved, restart NiFi.
-Once the application starts, the ADMIN user is
-able to access the UI at the HTTPS URL that is configured in the _nifi.properties_ file.
-
-From the UI, click on the Users icon ( image:iconUsers.png["Users", width=32] ) in the
-Management Toolbar (upper-right corner of the UI), and the User Management Page opens.
-
-The ADMIN user should be listed. Click on the pencil icon to see this user's role(s). You may edit the
-roles by selecting the appropriate checkboxes.
-
-The following roles are available in NiFi:
 
 [options="header,footer"]
-|========================================================================================================
-| Role Name | Description
-| Administrator | Administrator is able to configure thread pool sizes and user accounts as well as
-                  purge the dataflow change history.
-| Data Flow Manager | Data Flow Manager is given the ability to manipulate the dataflow. S/he is able to
-                      add, remove, and manipulate components on the graph; add, remove, and manipulate
-                      Controller Services and Reporting Tasks; create and manage templates;
-                      view statistics; and view the bulletin board.
-| Read Only | Users with Read Only access are able to view the dataflow but are unable to change anything.
-| Provenance | Users with Provenance access are able to query the Data Provenance repository and view
-               the lineage of data. Additionally, this role provides the ability to view or download
-               the content of a FlowFile from a Provenance event (assuming that the content is still
-               available in the Content Repository and that the Authority Provider also grants access).
-               This access is not provided to users with Read Only
-               (unless the user has both Read Only and Provenance roles) because the information provided
-               to users with this role can potentially be very sensitive in nature, as all FlowFile attributes
-               and data are exposed. In order to Replay a Provenance event, a user is required to have both
-               the Provenance role as well as the Data Flow Manager role.
-| NiFi | The NiFi Role is intended to be assigned to machines that will interact with an instance of NiFi
-         via Site-to-Site. This role provides the ability to send data to or retrieve data from Root
-         Group Ports (but only those that they are given permissions to interact with - see the User Guide
-         for more information on providing access to specific Ports) as well as obtain information about
-         which Ports exist. Note that this role allows the client to know only about the Ports that it
-         has permissions to interact with.
-| Proxy | The Proxy Role is assigned to a system in order to grant that system permission to make requests
-          on behalf of a user. For instance, if an HTTP proxy service is used to gain access to the system,
-          the certificate being used by that service can be given the Proxy Role.
-|========================================================================================================
+|==================================================================================================================================================
+| Property Name | Description
+|`Default Realm` | Default realm to provide when user enters incomplete user principal (i.e. NIFI.APACHE.ORG).
+|`Kerberos Config File` | Absolute path to Kerberos client configuration file.
+|`Authentication Expiration`| The duration of how long the user authentication is valid for. If the user never logs out, they will be required to log back in following this duration.
+|==================================================================================================================================================
 
-
-When users want access to the NiFi UI, they navigate to the configured URL and are
-prompted to request access. When someone has requested access, the ADMIN user sees a star
-on the Users icon in the Management Toolbar, alerting the ADMIN to the fact that a request is
-pending. Upon opening the User Management Page, the pending request is visible, and the ADMIN
-can grant access and click on the pencil icon to set the user's roles appropriately.
-
-The ADMIN may also select multiple users and add them to a "Group". Hold down the Shift key and select
-multiple users, then click the `Group` button in the upper-right corner of the User Management Page.
-Then, provide a name for the group.
-
-The group feature is especially useful when a remote NiFi cluster is connecting to this NiFi using
-a Remote Process Group. In that scenario, all the nodes
-in the remote cluster can be included in the same group. When the ADMIN wants to grant port access to the remote
-cluster, s/he can grant it to the group and avoid having to grant it individually to each node in the cluster.
+See also <<kerberos_service>> to allow single sign-on access via client Kerberos tickets.
 
 [[encryption]]
 Encryption Configuration
@@ -677,27 +597,30 @@ in the cluster. This allows one node to pick up where another node left off, or 
 When a component decides to store or retrieve state, it does so by providing a "Scope" - either Node-local or Cluster-wide. The
 mechanism that is used to store and retrieve this state is then determined based on this Scope, as well as the configured State
 Providers. The _nifi.properties_ file contains three different properties that are relevant to configuring these State Providers.
-The first is the `nifi.state.management.configuration.file` property specifies an external XML file that is used for configuring
-the local and cluster-wide State Providers. This XML file may contain configurations for multiple providers, so the
-`nifi.state.management.provider.local` property provides the identifier of the local State Provider configured in this XML file.
-Similarly, the `nifi.state.management.provider.cluster` property provides the identifier of the cluster-wide State Provider
-configured in this XML file.
 
-This XML file consists of a top-level `state-management` element, which has one or more `local-provider` and zero or more
-`cluster-provider` elements. Each of these elements then contains an `id` element that is used to specify the identifier that can
-be referenced in the _nifi.properties_ file, as well as a `class` element that specifies the fully-qualified class name to use
-in order to instantiate the State Provider. Finally, each of these elements may have zero or more `property` elements. Each
-`property` element has an attribute, `name` that is the name of the property that the State Provider supports. The textual content
-of the `property` element is the value of the property.
+|====
+|*Property*|*Description*
+|nifi.state.management.configuration.file|The first is the property that specifies an external XML file that is used for configuring the local and/or cluster-wide State Providers. This XML file may contain configurations for multiple providers
+|nifi.state.management.provider.local|The property that provides the identifier of the local State Provider configured in this XML file
+|nifi.state.management.provider.cluster|Similarly, the property provides the identifier of the cluster-wide State Provider configured in this XML file.
+|====
 
-Once these State Providers have been configured in the _state-management.xml_ file (or whatever file is configured), those Providers
-may be referenced by their identifiers. By default, the Local State Provider is configured to be a `WriteAheadLocalStateProvider` that
-persists the data to the _$NIFI_HOME/state_ directory. The default Cluster State Provider is configured to be a `ZooKeeperStateProvider`.
-The default ZooKeeper-based provider must have its `Connect String` property populated before it can be used. It is also advisable,
-if multiple NiFi instances will use the same ZooKeeper instance, that the value of the `Root Node` property be changed. For instance,
-one might set the value to `/nifi/<team name>/production`. A `Connect String` takes the form of comma separated <host>:<port> tuples,
-such as my-zk-server1:2181,my-zk-server2:2181,my-zk-server3:2181. In the event a port is not specified for any of the hosts, the ZooKeeper
-default of 2181 is assumed.
+This XML file consists of a top-level `state-management` element, which has one or more `local-provider` and zero or more `cluster-provider`
+elements. Each of these elements then contains an `id` element that is used to specify the identifier that can be referenced in the
+_nifi.properties_ file, as well as a `class` element that specifies the fully-qualified class name to use in order to instantiate the State
+Provider. Finally, each of these elements may have zero or more `property` elements. Each `property` element has an attribute, `name` that is the name
+of the `property` that the State Provider supports. The textual content of the property element is the value of the property.
+
+Once these State Providers have been configured in the _state-management.xml_ file (or whatever file is configured), those Providers may be
+referenced by their identifiers.
+
+By default, the Local State Provider is configured to be a `WriteAheadLocalStateProvider` that persists the data to the
+_$NIFI_HOME/state/local_ directory. The default Cluster State Provider is configured to be a `ZooKeeperStateProvider`. The default
+ZooKeeper-based provider must have its `Connect String` property populated before it can be used. It is also advisable, if multiple NiFi instances
+will use the same ZooKeeper instance, that the value of the `Root Node` property be changed. For instance, one might set the value to
+`/nifi/<team name>/production`. A `Connect String` takes the form of comma separated <host>:<port> tuples, such as
+my-zk-server1:2181,my-zk-server2:2181,my-zk-server3:2181. In the event a port is not specified for any of the hosts, the ZooKeeper default of
+2181 is assumed.
 
 When adding data to ZooKeeper, there are two options for Access Control: `Open` and `CreatorOnly`. If the `Access Control` property is
 set to `Open`, then anyone is allowed to log into ZooKeeper and have full permissions to see, change, delete, or administer the data.
@@ -729,11 +652,18 @@ behave as a cluster. However, there are many environments in which NiFi is deplo
 In order to avoid the burden of forcing administrators to also maintain a separate ZooKeeper instance, NiFi provides the option of starting an
 embedded ZooKeeper server.
 
+|====
+|*Property*|*Description*
+|nifi.state.management.embedded.zookeeper.start|Specifies whether or not this instance of NiFi should run an embedded ZooKeeper server
+|nifi.state.management.embedded.zookeeper.properties|Properties file that provides the ZooKeeper properties to use if <nifi.state.management.embedded.zookeeper.start> is set to true
+|====
+
 This can be accomplished by setting the `nifi.state.management.embedded.zookeeper.start` property in _nifi.properties_ to `true` on those nodes
 that should run the embedded ZooKeeper server. Generally, it is advisable to run ZooKeeper on either 3 or 5 nodes. Running on fewer than 3 nodes
 provides less durability in the face of failure. Running on more than 5 nodes generally produces more network traffic than is necessary. Additionally,
 running ZooKeeper on 4 nodes provides no more benefit than running on 3 nodes, ZooKeeper requires a majority of nodes be active in order to function.
-However, it is up to the administrator to determine the number of nodes most appropriate to the particular deployment of NiFi.
+However, it is up to the administrator to determine the number of nodes most appropriate to the particular deployment of NiFi. An embedded ZooKeeper
+server cannot be run on the NCM.
 
 If the `nifi.state.management.embedded.zookeeper.start` property is set to `true`, the `nifi.state.management.embedded.zookeeper.properties` property
 in _nifi.properties_ also becomes relevant. This specifies the ZooKeeper properties file to use. At a minimum, this properties file needs to be populated
@@ -744,9 +674,9 @@ ports, the firewall may need to be configured to open these ports for incoming t
 listen on for client connections must be opened in the firewall. The default value for this is _2181_ but can be configured via the _clientPort_ property
 in the _zookeeper.properties_ file.
 
-When using an embedded ZooKeeper, the _conf/zookeeper.properties_ file has a property named `dataDir`. By default, this value is set to `./state/zookeeper`.
+When using an embedded ZooKeeper, the ./__conf/zookeeper.properties__ file has a property named `dataDir`. By default, this value is set to `./state/zookeeper`.
 If more than one NiFi node is running an embedded ZooKeeper, it is important to tell the server which one it is. This is accomplished by creating a file named
-_myid_ and placing it in ZooKeeper's data directory. The contents of this file should be the index of the server as specific by the `server.<number>`. So for
+_myid_ and placing it in ZooKeeper’s data directory. The contents of this file should be the index of the server as specific by the `server.<number>`. So for
 one of the ZooKeeper servers, we will accomplish this by performing the following commands:
 
 [source]
@@ -792,7 +722,6 @@ providing support for SSL connections in version 3.5.0.
 
 [[securing_zookeeper]]
 === Securing ZooKeeper
-
 When NiFi communicates with ZooKeeper, all communications, by default, are non-secure, and anyone who logs into ZooKeeper is able to view and manipulate all
 of the NiFi state that is stored in ZooKeeper. To prevent this, we can use Kerberos to manage the authentication. At this time, ZooKeeper does not provide
 support for encryption via SSL. Support for SSL in ZooKeeper is being actively developed and is expected to be available in the 3.5.x release version.
@@ -800,9 +729,98 @@ support for encryption via SSL. Support for SSL in ZooKeeper is being actively d
 In order to secure the communications, we need to ensure that both the client and the server support the same configuration. Instructions for configuring the
 NiFi ZooKeeper client and embedded ZooKeeper server to use Kerberos are provided below.
 
+If Kerberos is not already setup in your environment, you can find information on installing and setting up a Kerberos Server at
+https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Managing_Smart_Cards/Configuring_a_Kerberos_5_Server.html[_https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Managing_Smart_Cards/Configuring_a_Kerberos_5_Server.html_]
+. This guide assumes that Kerberos already has been installed in the environment in which NiFi is running.
+
+Note, the following procedures for kerberizing an Embedded Zookeeper server in your NiFI Node and kerberizing a zookeeper NiFI client will require that
+Kerberos client libraries be installed. This is accomplished in Fedora-based Linux distributions via:
+
+[source]
+yum install krb5-workstation
+
+Once this is complete, the /etc/krb5.conf will need to be configured appropriately for your organization’s Kerberos environment.
+
+
+
+[[zk_kerberos_server]]
+==== Kerberizing Embedded ZooKeeper Server
+The krb5.conf file on the systems with the embedded zookeeper servers should be identical to the one on the system where the krb5kdc service is running.
+When using the embedded ZooKeeper server, we may choose to secure the server by using Kerberos. All nodes configured to launch an embedded ZooKeeper and
+using Kerberos should follow these steps. When using the embedded ZooKeeper server, we may choose to secure the server by using Kerberos. All nodes
+configured to launch an embedded ZooKeeper and using Kerberos should follow these steps.
+
+In order to use Kerberos, we first need to generate a Kerberos Principal for our ZooKeeper servers. The following command is run on the server where the
+krb5kdc service is running. This is accomplished via the kadmin tool:
+
+[source]
+kadmin: addprinc "zookeeper/myHost.example.com@EXAMPLE.COM"
+
+Here, we are creating a Principal with the primary `zookeeper/myHost.example.com`, using the realm `EXAMPLE.COM`. We need to use a Principal whose
+name is `<service name>/<instance name>`. In this case, the service is `zookeeper` and the instance name is `myHost.example.com` (the fully qualified name of our host).
+
+Next, we will need to create a KeyTab for this Principal, this command is run on the server with the NiFi instance with an embedded zookeeper server:
+
+[source]
+kadmin: xst -k zookeeper-server.keytab zookeeper/myHost.example.com@EXAMPLE.COM
+
+This will create a file in the current directory named `zookeeper-server.keytab`. We can now copy that file into the `$NIFI_HOME/conf/` directory. We should ensure
+that only the user that will be running NiFi is allowed to read this file.
+
+We will need to repeat the above steps for each of the instances of NiFi that will be running the embedded ZooKeeper server, being sure to replace _myHost.example.com_ with
+__myHost2.example.com__, or whatever fully qualified hostname the ZooKeeper server will be run on.
+
+Now that we have our KeyTab for each of the servers that will be running NiFi, we will need to configure NiFi’s embedded ZooKeeper server to use this configuration.
+ZooKeeper uses the Java Authentication and Authorization Service (JAAS), so we need to create a JAAS-compatible file In the `$NIFI_HOME/conf/` directory, create a file
+named `zookeeper-jaas.conf` (this file will already exist if the Client has already been configured to authenticate via Kerberos. That’s okay, just add to the file).
+We will add to this file, the following snippet:
+
+[source]
+Server {
+  com.sun.security.auth.module.Krb5LoginModule required
+  useKeyTab=true
+  keyTab="./conf/zookeeper-server.keytab"
+  storeKey=true
+  useTicketCache=false
+  principal="zookeeper/myHost.example.com@EXAMPLE.COM";
+};
+
+Be sure to replace the value of _principal_ above with the appropriate Principal, including the fully qualified domain name of the server.
+
+Next, we need to tell NiFi to use this as our JAAS configuration. This is done by setting a JVM System Property, so we will edit the `conf/bootstrap.conf` file.
+If the Client has already been configured to use Kerberos, this is not necessary, as it was done above. Otherwise, we will add the following line to our _bootstrap.conf_ file:
+
+[source]
+java.arg.15=-Djava.security.auth.login.config=./conf/zookeeper-jaas.conf
+
+Note: this additional line in the file doesn’t have to be number 15, it just has to be added to the bootstrap.conf file, use whatever number is appropriate for your configuration.
+
+We will want to initialize our Kerberos ticket by running the following command:
+
+[source]
+kinit –kt zookeeper-server.keytab "zookeeper/myHost.example.com@EXAMPLE.COM"
+
+Again, be sure to replace the Principal with the appropriate value, including your realm and your fully qualified hostname.
+
+Finally, we need to tell the Kerberos server to use the SASL Authentication Provider. To do this, we edit the `$NIFI_HOME/conf/zookeeper.properties` file and add the following
+lines:
+
+[source]
+authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+jaasLoginRenew=3600000
+requireClientAuthScheme=sasl
+
+The last line is optional but specifies that clients MUST use Kerberos to communicate with our ZooKeeper instance.
+
+Now, we can start NiFi, and the embedded ZooKeeper server will use Kerberos as the authentication mechanism.
+
+
 
 [[zk_kerberos_client]]
 ==== Kerberizing NiFi's ZooKeeper Client
+Note: The NiFi nodes running the embedded zookeeper server will also need to follow the below procedure since they will also be acting as a client at
+the same time.
+
 The preferred mechanism for authenticating users with ZooKeeper is to use Kerberos. In order to use Kerberos to authenticate, we must configure a few
 system properties, so that the ZooKeeper client knows who the user is and where the KeyTab file is. All nodes configured to store cluster-wide state
 using `ZooKeeperStateProvider` and using Kerberos should follow these steps.
@@ -820,6 +838,8 @@ After we have created our Principal, we will need to create a KeyTab for the Pri
 
 [source]
 kadmin: xst -k nifi.keytab nifi@EXAMPLE.COM
+
+This keytab file can be copied to the other NiFi nodes with embedded zookeeper servers.
 
 This will create a file in the current directory named `nifi.keytab`. We can now copy that file into the _$NIFI_HOME/conf/_ directory. We should ensure
 that only the user that will be running NiFi is allowed to read this file.
@@ -847,89 +867,9 @@ java.arg.15=-Djava.security.auth.login.config=./conf/zookeeper-jaas.conf
 We can initialize our Kerberos ticket by running the following command:
 
 [source]
-kinit nifi
-
-Note, the above `kinit` command requires that Kerberos client libraries be installed. This is accomplished in Fedora-based Linux distributions via:
-
-[source]
-yum install krb5-workstation krb5-libs krb5-auth-dialog
-
-Once this is complete, the /etc/krb5.conf will need to be configured appropriately for your organization's Kerberos envrionment.
+kinit -kt nifi.keytab nifi@EXAMPLE.COM
 
 Now, when we start NiFi, it will use Kerberos to authentication as the `nifi` user when communicating with ZooKeeper.
-
-
-
-[[zk_kerberos_server]]
-==== Kerberizing Embedded ZooKeeper Server
-When using the embedded ZooKeeper server, we may choose to secure the server by using Kerberos. All nodes configured to launch an embedded ZooKeeper
-and using Kerberos should follow these steps.
-
-If Kerberos is not already setup in your environment, you can find information on installing and setting up a Kerberos Server at
-link:https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Managing_Smart_Cards/Configuring_a_Kerberos_5_Server.html[https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Managing_Smart_Cards/Configuring_a_Kerberos_5_Server.html]
-. This guide assumes that Kerberos already has been installed in the environment in which NiFi is running.
-
-In order to use Kerberos, we first need to generate a Kerberos Principal for our ZooKeeper server. This is accomplished via the `kadmin` tool:
-
-[source]
-kadmin: addprinc "zookeeper/myHost.example.com@EXAMPLE.COM"
-
-Here, we are creating a Principal with the primary `zookeeper/myHost.example.com`, using the realm `EXAMPLE.COM`. We need to use a Principal whose
-name is `<service name>/<instance name>`. In this case, the service is `zookeeper` and the instance name is `myHost.example.com` (the fully qualified name of our host).
-
-Next, we will need to create a KeyTab for this Principal:
-
-[source]
-kadmin: xst -k zookeeper-server.keytab zookeeper/myHost.example.com@EXAMPLE.COM
-
-This will create a file in the current directory named `zookeeper-server.keytab`. We can now copy that file into the `$NIFI_HOME/conf/` directory. We should ensure
-that only the user that will be running NiFi is allowed to read this file.
-
-We will need to repeat the above steps for each of the instances of NiFi that will be running the embedded ZooKeeper server, being sure to replace _myHost.example.com_ with
-_myHost2.example.com_, or whatever fully qualified hostname the ZooKeeper server will be run on.
-
-Now that we have our KeyTab for each of the servers that will be running NiFi, we will need to configure NiFi's embedded ZooKeeper server to use this configuration.
-ZooKeeper uses the Java Authentication and Authorization Service (JAAS), so we need to create a JAAS-compatible file In the `$NIFI_HOME/conf/` directory, create a file
-named `zookeeper-jaas.conf` (this file will already exist if the Client has already been configured to authenticate via Kerberos. That's okay, just add to the file).
-We will add to this file, the following snippet:
-
-[source]
-Server {
-  com.sun.security.auth.module.Krb5LoginModule required
-  useKeyTab=true
-  keyTab="./conf/zookeeper-server.keytab"
-  storeKey=true
-  useTicketCache=false
-  principal="zookeeper/myHost.example.com@EXAMPLE.COM";
-};
-
-Be sure to replace the value of _principal_ above with the appropriate Principal, including the fully qualified domain name of the server.
-
-Next, we need to tell NiFi to use this as our JAAS configuration. This is done by setting a JVM System Property, so we will edit the `conf/bootstrap.conf` file.
-If the Client has already been configured to use Kerberos, this is not necessary, as it was done above. Otherwise, we will add the following line to our _bootstrap.conf_ file:
-
-[source]
-java.arg.15=-Djava.security.auth.login.config=./conf/zookeeper-jaas.conf
-
-We will want to initialize our Kerberos ticket by running the following command:
-
-[source]
-kinit "zookeeper/myHost.example.com@EXAMPLE.COM"
-
-Again, be sure to replace the Principal with the appropriate value, including your realm and your fully qualified hostname.
-
-Finally, we need to tell the Kerberos server to use the SASL Authentication Provider. To do this, we edit the `$NIFI_HOME/conf/zookeeper.properties` file and add the following
-lines:
-
-[source]
-authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
-jaasLoginRenew=3600000
-requireClientAuthScheme=sasl
-
-The last line is optional but specifies that clients MUST use Kerberos to communicate with our ZooKeeper instance.
-
-Now, we can start NiFi, and the embedded ZooKeeper server will use Kerberos as the authentication mechanism.
-
 
 
 
@@ -1088,6 +1028,58 @@ A complete example of configuring the Email service would look like the followin
      </service>
 ....
 
+[[kerberos_service]]
+Kerberos Service
+----------------
+NiFi can be configured to use Kerberos SPNEGO (or "Kerberos Service") for authentication. In this scenario, users will hit the REST endpoint `/access/kerberos` and the server will respond with a `401` status code and the challenge response header `WWW-Authenticate: Negotiate`. This communicates to the browser to use the GSS-API and load the user's Kerberos ticket and provide it as a Base64-encoded header value in the subsequent request. It will be of the form `Authorization: Negotiate YII...`. NiFi will attempt to validate this ticket with the KDC. If it is successful, the user's _principal_ will be returned as the identity, and the flow will follow login/credential authentication, in that a JWT will be issued in the response to prevent the unnecessary overhead of Kerberos authentication on every subsequent request. If the ticket cannot be validated, it will return with the appropriate error response code. The user will then be able to provide their Kerberos credentials to the login form if the `KerberosLoginIdentityProvider` has been configured. See <<kerberos_login_identity_provider>> login identity provider for more details.
+
+NiFi will only respond to Kerberos SPNEGO negotiation over an HTTPS connection, as unsecured requests are never authenticated.
+
+The following properties must be set in _nifi.properties_ to enable Kerberos service authentication.
+
+|====
+|*Property*|*Required*|*Description*
+|Service Principal|true|The service principal used by NiFi to communicate with the KDC
+|Keytab Location|true|The file path to the keytab containing the service principal
+|====
+
+See <<kerberos_properties>> for complete documentation.
+
+[[kerberos_service_notes]]
+Notes
+~~~~~
+
+* Kerberos is case-sensitive in many places and the error messages (or lack thereof) may not be sufficiently explanatory. Check the case sensitivity of the service principal in your configuration files. Convention is `HTTP/fully.qualified.domain@REALM`.
+* Browsers have varying levels of restriction when dealing with SPNEGO negotiations. Some will provide the local Kerberos ticket to any domain that requests it, while others whitelist the trusted domains. See link:http://docs.spring.io/autorepo/docs/spring-security-kerberos/1.0.2.BUILD-SNAPSHOT/reference/htmlsingle/#browserspnegoconfig[Spring Security Kerberos - Reference Documentation: Appendix E. Configure browsers for SPNEGO Negotiation] for common browsers.
+* Some browsers (legacy IE) do not support recent encryption algorithms such as AES, and are restricted to legacy algorithms (DES). This should be noted when generating keytabs.
+* The KDC must be configured and a service principal defined for NiFi and a keytab exported. Comprehensive instructions for Kerberos server configuration and administration are beyond the scope of this document (see link:http://web.mit.edu/kerberos/krb5-current/doc/admin/index.html[MIT Kerberos Admin Guide]), but an example is below:
+
+
+Adding a service principal for a server at `nifi.nifi.apache.org` and exporting the keytab from the KDC:
+
+....
+root@kdc:/etc/krb5kdc# kadmin.local
+Authenticating as principal admin/admin@NIFI.APACHE.ORG with password.
+kadmin.local:  listprincs
+K/M@NIFI.APACHE.ORG
+admin/admin@NIFI.APACHE.ORG
+...
+kadmin.local:  addprinc -randkey HTTP/nifi.nifi.apache.org
+WARNING: no policy specified for HTTP/nifi.nifi.apache.org@NIFI.APACHE.ORG; defaulting to no policy
+Principal "HTTP/nifi.nifi.apache.org@NIFI.APACHE.ORG" created.
+kadmin.local:  ktadd -k /http-nifi.keytab HTTP/nifi.nifi.apache.org
+Entry for principal HTTP/nifi.nifi.apache.org with kvno 2, encryption type des3-cbc-sha1 added to keytab WRFILE:/http-nifi.keytab.
+Entry for principal HTTP/nifi.nifi.apache.org with kvno 2, encryption type des-cbc-crc added to keytab WRFILE:/http-nifi.keytab.
+kadmin.local:  listprincs
+HTTP/nifi.nifi.apache.org@NIFI.APACHE.ORG
+K/M@NIFI.APACHE.ORG
+admin/admin@NIFI.APACHE.ORG
+...
+kadmin.local: q
+root@kdc:~# ll /http*
+-rw------- 1 root root 162 Mar 14 21:43 /http-nifi.keytab
+root@kdc:~#
+....
 
 [[system_properties]]
 System Properties
@@ -1121,9 +1113,19 @@ only consider if `nifi.security.user.login.identity.provider` configured with a 
 |nifi.templates.directory*|This is the location of the directory where flow templates are saved. The default value is ./conf/templates.l
 |nifi.ui.banner.text|This is banner text that may be configured to display at the top of the User Interface. It is blank by default.
 |nifi.ui.autorefresh.interval|The interval at which the User Interface auto-refreshes. The default value is 30 sec.
-|nifi.nar.library.directory|The location of the nar library. The default value is ./lib and probably should be left as is.
+|nifi.nar.library.directory|The location of the nar library. The default value is ./lib and probably should be left as is. +
+ +
+*NOTE*: Additional library directories can be specified by using the *_nifi.nar.library.directory._* prefix with unique suffixes and separate paths as values. +
+ +
+For example, to provide two additional library locations, a user could also specify additional properties with keys of: +
+ +
+nifi.nar.library.directory.lib1=/nars/lib1 +
+nifi.nar.library.directory.lib2=/nars/lib2 +
+ +
+Providing three total locations, including  _nifi.nar.library.directory_.
 |nifi.nar.working.directory|The location of the nar working directory. The default value is ./work/nar and probably should be left as is.
 |nifi.documentation.working.directory|The documentation working directory. The default value is ./work/docs/components and probably should be left as is.
+|nifi.processor.scheduling.timeout|Time to wait for a Processor's life-cycle operation (@OnScheduled and @OnUnscheduled) to finish before other life-cycle operation (e.g., stop) could be invoked. Default is 1 minute.
 |====
 
 
@@ -1161,7 +1163,7 @@ to configure it on a separate drive if available.
 
 |====
 |*Property*|*Description*
-|nifi.flowfile.repository.implementation|The FlowFile Repository implementation. The default value is org.apache.nifi.controller.repository.WriteAheadFlowFileRepository and should not be changed.
+|nifi.flowfile.repository.implementation|The FlowFile Repository implementation. The default value is org.apache.nifi.controller.repository.WriteAheadFlowFileRepository and should only be changed with caution. To store flowfiles in memory instead of on disk (at the risk of data loss in the event of power/machine failure), set this property to org.apache.nifi.controller.repository.VolatileFlowFileRepository.
 |nifi.flowfile.repository.directory*|The location of the FlowFile Repository. The default value is ./flowfile_repository.
 |nifi.flowfile.repository.partitions|The number of partitions. The default value is 256.
 |nifi.flowfile.repository.checkpoint.interval| The FlowFile Repository checkpoint interval. The default value is 2 mins.
@@ -1195,7 +1197,14 @@ FlowFile Repository, if also on that disk, could become corrupt. To avoid this s
 
 |====
 |*Property*|*Description*
-|nifi.content.repository.implementation|The Content Repository implementation. The default value is org.apache.nifi.controller.repository.FileSystemRepository and should not be changed.
+|nifi.content.repository.implementation|The Content Repository implementation. The default value is org.apache.nifi.controller.repository.FileSystemRepository and should only be changed with caution. To store flowfile content in memory instead of on disk (at the risk of data loss in the event of power/machine failure), set this property to org.apache.nifi.controller.repository.VolatileContentRepository.
+|====
+
+*File System Content Repository Properties* +
+
+|====
+|*Property*|*Description*
+|nifi.content.repository.implementation|The Content Repository implementation. The default value is org.apache.nifi.controller.repository.FileSystemRepository and should only be changed with caution. To store flowfile content in memory instead of on disk (at the risk of data loss in the event of power/machine failure), set this property to org.apache.nifi.controller.repository.VolatileContentRepository.
 |nifi.content.claim.max.appendable.size|The maximum size for a content claim. The default value is 10 MB.
 |nifi.content.claim.max.flow.files|The maximum number of FlowFiles to assign to one content claim. The default value is 100.
 |nifi.content.repository.directory.default*|The location of the Content Repository. The default value is ./content_repository. +
@@ -1216,13 +1225,21 @@ this property specifies the maximum amount of time to keep the archived data. It
 |nifi.content.viewer.url|The URL for a web-based content viewer if one is available. It is blank by default.
 |====
 
+*Volatile Content Repository Properties* +
+
+|====
+|*Property*|*Description*
+|nifi.volatile.content.repository.max.size|The Content Repository maximum size in memory. The default value is 100MB.
+|nifi.volatile.content.repository.block.size|The Content Repository block size. The default value is 32KB.
+|====
+
 *Provenance Repository* +
 
 The Provenance Repository contains the information related to Data Provenance. The next three sections are for Provenance Repository properties.
 
 |====
 |*Property*|*Description*
-|nifi.provenance.repository.implementation|The Provenance Repository implementation. The default value is org.apache.nifi.provenance.PersistentProvenanceRepository and should not be changed.
+|nifi.provenance.repository.implementation|The Provenance Repository implementation. The default value is org.apache.nifi.provenance.PersistentProvenanceRepository and should only be changed with caution. To store provenance events in memory instead of on disk (at the risk of data loss in the event of power/machine failure), set this property to org.apache.nifi.provenance.VolatileProvenanceRepository.
 |====
 
 *Persistent Provenance Repository Properties* +
@@ -1241,7 +1258,7 @@ nifi.provenance.repository.directory.provenance2=/repos/provenance2 +
 Providing three total locations, including  _nifi.provenance.repository.directory.default_.
 |nifi.provenance.repository.max.storage.time|The maximum amount of time to keep data provenance information. The default value is 24 hours.
 |nifi.provenance.repository.max.storage.size|The maximum amount of data provenance information to store at a time. The default is 1 GB.
-|nifi.provenance.repository.rollover.time|The amount of time to wait before rolling over the latest data provenance information so that it is available in the User Interface. The default value is 5 mins.
+|nifi.provenance.repository.rollover.time|The amount of time to wait before rolling over the latest data provenance information so that it is available in the User Interface. The default value is 30 secs.
 |nifi.provenance.repository.rollover.size|The amount of information to roll over at a time. The default value is 100 MB.
 |nifi.provenance.repository.query.threads|The number of threads to use for Provenance Repository queries. The default value is 2.
 |nifi.provenance.repository.index.threads|The number of threads to use for indexing Provenance events so that they are searchable. The default value is 1.
@@ -1328,15 +1345,8 @@ Security Configuration section of this Administrator's Guide.
 |nifi.security.truststoreType|The truststore type. It is blank by default.
 |nifi.security.truststorePasswd|The truststore password. It is blank by default.
 |nifi.security.needClientAuth|This indicates whether client authentication in the cluster protocol. It is blank by default.
-|nifi.security.user.credential.cache.duration|The length of time to cache user credentials. The default value is 24 hours.
-|nifi.security.user.authority.provider|This indicates what type of authority provider to use. The default value is file-provider, which refers to the file
-configured in the core property `nifi.authority.provider.configuration.file`. Another authority provider may be used, such as when the NiFi instance is part of a cluster. But the default value of file-provider is fine for a standalone instance of NiFi.
 |nifi.security.user.login.identity.provider|This indicates what type of login identity provider to use. The default value is blank, can be set to the identifier from a provider
 in the file specified in `nifi.login.identity.provider.configuration.file`. Setting this property will trigger NiFi to support username/password authentication.
-|nifi.security.support.new.account.requests|This indicates whether a secure NiFi is configured to allow users to request access. It is blank by default.
-|nifi.security.anonymous.authorities|This indicates what roles to grant to anonymous users accessing NiFi over HTTPS. It is blank by default, but could be
-set to any combination of ROLE_MONITOR, ROLE_DFM, ROLE_ADMIN, ROLE_PROVENANCE, ROLE_NIFI. Leaving this property blank will require that users accessing NiFi
-over HTTPS be authenticated either using a client certificate or their credentials against the configured log identity provider.
 |nifi.security.ocsp.responder.url|This is the URL for the Online Certificate Status Protocol (OCSP) responder if one is being used. It is blank by default.
 |nifi.security.ocsp.responder.certificate|This is the location of the OCSP responder certificate if one is being used. It is blank by default.
 |====
@@ -1399,13 +1409,21 @@ Only configure these properties for the cluster manager.
 |nifi.cluster.manager.safemode.duration|Upon restart of an already existing cluster, this is the amount of time that the cluster manager waits for the primary node to connect before giving up and selecting another node to be the primary node. The default value is 0 sec, which means to wait forever. If the administrator does not care which node is the primary node, this value can be changed to some amount of time other than 0 sec.
 |====
 
-*Kerberos* +
+[[kerberos_properties]]
+*Kerberos Properties* +
 
 |====
 |*Property*|*Description*
 |nifi.kerberos.krb5.file*|The location of the krb5 file, if used. It is blank by default. Note that this property is not used to authenticate NiFi users.
     Rather, it is made available for extension points, such as Hadoop-based Processors, to use. At this time, only a single krb5 file is allowed to
     be specified per NiFi instance, so this property is configured here rather than in individual Processors.
+    Example: `/etc/krb5.conf`
+|nifi.kerberos.service.principal*|The name of the NiFi Kerberos service principal, if used. It is blank by default. Note that this property is used to authenticate NiFi users.
+   Example: `HTTP/nifi.example.com` or `HTTP/nifi.example.com@EXAMPLE.COM`
+|nifi.kerberos.keytab.location*|The file path of the NiFi Kerberos keytab, if used. It is blank by default. Note that this property is used to authenticate NiFi users.
+  Example: `/etc/http-nifi.keytab`
+|nifi.kerberos.authentication.expiration*|The expiration duration of a successful Kerberos user authentication, if used. It is 12 hours by default.
+  Example: `12 hours`
 |====
 
 

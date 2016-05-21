@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.amazonaws.services.s3.model.AmazonS3Exception;
 import org.apache.nifi.annotation.behavior.DynamicProperty;
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.InputRequirement.Requirement;
@@ -79,7 +80,7 @@ import com.amazonaws.services.s3.model.UploadPartRequest;
 import com.amazonaws.services.s3.model.UploadPartResult;
 
 @SupportsBatching
-@SeeAlso({FetchS3Object.class, DeleteS3Object.class})
+@SeeAlso({FetchS3Object.class, DeleteS3Object.class, ListS3.class})
 @InputRequirement(Requirement.INPUT_REQUIRED)
 @Tags({"Amazon", "S3", "AWS", "Archive", "Put"})
 @CapabilityDescription("Puts FlowFiles to an Amazon S3 Bucket\n" +
@@ -112,6 +113,7 @@ import com.amazonaws.services.s3.model.UploadPartResult;
     @WritesAttribute(attribute = "s3.uploadId", description = "The uploadId used to upload the Object to S3"),
     @WritesAttribute(attribute = "s3.expiration", description = "A human-readable form of the expiration date of " +
             "the S3 object, if one is set"),
+    @WritesAttribute(attribute = "s3.sseAlgorithm", description = "The server side encryption algorithm of the object"),
     @WritesAttribute(attribute = "s3.usermetadata", description = "A human-readable form of the User Metadata of " +
             "the S3 object, if any was set")
 })
@@ -120,6 +122,7 @@ public class PutS3Object extends AbstractS3Processor {
     public static final long MIN_S3_PART_SIZE = 50L * 1024L * 1024L;
     public static final long MAX_S3_PUTOBJECT_SIZE = 5L * 1024L * 1024L * 1024L;
     public static final String PERSISTENCE_ROOT = "conf/state/";
+    public static final String NO_SERVER_SIDE_ENCRYPTION = "None";
 
     public static final PropertyDescriptor EXPIRATION_RULE_ID = new PropertyDescriptor.Builder()
         .name("Expiration Time Rule")
@@ -176,10 +179,20 @@ public class PutS3Object extends AbstractS3Processor {
             .addValidator(StandardValidators.TIME_PERIOD_VALIDATOR)
             .build();
 
+    public static final PropertyDescriptor SERVER_SIDE_ENCRYPTION = new PropertyDescriptor.Builder()
+            .name("server-side-encryption")
+            .displayName("Server Side Encryption")
+            .description("Specifies the algorithm used for server side encryption.")
+            .required(true)
+            .allowableValues(NO_SERVER_SIDE_ENCRYPTION, ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION)
+            .defaultValue(NO_SERVER_SIDE_ENCRYPTION)
+            .build();
+
     public static final List<PropertyDescriptor> properties = Collections.unmodifiableList(
         Arrays.asList(KEY, BUCKET, ACCESS_KEY, SECRET_KEY, CREDENTIALS_FILE, AWS_CREDENTIALS_PROVIDER_SERVICE, STORAGE_CLASS, REGION, TIMEOUT, EXPIRATION_RULE_ID,
             FULL_CONTROL_USER_LIST, READ_USER_LIST, WRITE_USER_LIST, READ_ACL_LIST, WRITE_ACL_LIST, OWNER, SSL_CONTEXT_SERVICE,
-            ENDPOINT_OVERRIDE, MULTIPART_THRESHOLD, MULTIPART_PART_SIZE, MULTIPART_S3_AGEOFF_INTERVAL, MULTIPART_S3_MAX_AGE, PROXY_HOST, PROXY_HOST_PORT));
+            ENDPOINT_OVERRIDE, MULTIPART_THRESHOLD, MULTIPART_PART_SIZE, MULTIPART_S3_AGEOFF_INTERVAL, MULTIPART_S3_MAX_AGE, SERVER_SIDE_ENCRYPTION,
+            PROXY_HOST, PROXY_HOST_PORT));
 
     final static String S3_BUCKET_KEY = "s3.bucket";
     final static String S3_OBJECT_KEY = "s3.key";
@@ -193,6 +206,7 @@ public class PutS3Object extends AbstractS3Processor {
     final static String S3_API_METHOD_ATTR_KEY = "s3.apimethod";
     final static String S3_API_METHOD_PUTOBJECT = "putobject";
     final static String S3_API_METHOD_MULTIPARTUPLOAD = "multipartupload";
+    final static String S3_SSE_ALGORITHM = "s3.sseAlgorithm";
 
     final static String S3_PROCESS_UNSCHEDULED_MESSAGE = "Processor unscheduled, stopping upload";
 
@@ -404,6 +418,12 @@ public class PutS3Object extends AbstractS3Processor {
                                         entry.getKey()).evaluateAttributeExpressions(ff).getValue();
                                 userMetadata.put(entry.getKey().getName(), value);
                             }
+                        }
+
+                        final String serverSideEncryption = context.getProperty(SERVER_SIDE_ENCRYPTION).getValue();
+                        if (!serverSideEncryption.equals(NO_SERVER_SIDE_ENCRYPTION)) {
+                            objectMetadata.setSSEAlgorithm(serverSideEncryption);
+                            attributes.put(S3_SSE_ALGORITHM, serverSideEncryption);
                         }
 
                         if (!userMetadata.isEmpty()) {
@@ -695,8 +715,19 @@ public class PutS3Object extends AbstractS3Processor {
                 ageoffLocalState(ageCutoff);
                 lastS3AgeOff.set(System.currentTimeMillis());
             } catch(AmazonClientException e) {
-                getLogger().error("Error checking S3 Multipart Upload list for {}: {}",
-                        new Object[]{bucket, e.getMessage()});
+                if (e instanceof AmazonS3Exception
+                        && ((AmazonS3Exception)e).getStatusCode() == 403
+                        && ((AmazonS3Exception) e).getErrorCode().equals("AccessDenied")) {
+                    getLogger().warn("AccessDenied checking S3 Multipart Upload list for {}: {} " +
+                            "** The configured user does not have the s3:ListBucketMultipartUploads permission " +
+                            "for this bucket, S3 ageoff cannot occur without this permission.  Next ageoff check " +
+                            "time is being advanced by interval to prevent checking on every upload **",
+                            new Object[]{bucket, e.getMessage()});
+                    lastS3AgeOff.set(System.currentTimeMillis());
+                } else {
+                    getLogger().error("Error checking S3 Multipart Upload list for {}: {}",
+                            new Object[]{bucket, e.getMessage()});
+                }
             } finally {
                 s3BucketLock.unlock();
             }

@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.nifi.authorization.resource.Authorizable;
 import org.apache.nifi.connectable.Connectable;
 import org.apache.nifi.connectable.Connection;
 import org.apache.nifi.connectable.Funnel;
@@ -27,7 +28,9 @@ import org.apache.nifi.connectable.Port;
 import org.apache.nifi.connectable.Position;
 import org.apache.nifi.controller.ProcessorNode;
 import org.apache.nifi.controller.Snippet;
+import org.apache.nifi.controller.Template;
 import org.apache.nifi.controller.label.Label;
+import org.apache.nifi.controller.service.ControllerServiceNode;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.Processor;
 
@@ -40,7 +43,7 @@ import org.apache.nifi.processor.Processor;
  * <p>
  * MUST BE THREAD-SAFE</p>
  */
-public interface ProcessGroup {
+public interface ProcessGroup extends Authorizable {
 
     /**
      * @return a reference to this ProcessGroup's parent. This will be
@@ -411,10 +414,39 @@ public interface ProcessGroup {
     Set<Connection> getConnections();
 
     /**
+     * @param id of the Connection
+     * @return the Connection with the given ID, if it exists as a child or
+     * descendant of this ProcessGroup. This performs a recursive search of all
+     * descendant ProcessGroups
+     */
+    Connection findConnection(String id);
+
+    /**
      * @return a List of all Connections contains within this ProcessGroup and
      * any child ProcessGroups
      */
     List<Connection> findAllConnections();
+
+    /**
+     * @param id of the Funnel
+     * @return the Funnel with the given ID, if it exists as a child or
+     * descendant of this ProcessGroup. This performs a recursive search of all
+     * descendant ProcessGroups
+     */
+    Funnel findFunnel(String id);
+
+    /**
+     * @param id of the Controller Service
+     * @return the Controller Service with the given ID, if it exists as a child or
+     *         descendant of this ProcessGroup. This performs a recursive search of all
+     *         descendant ProcessGroups
+     */
+    ControllerServiceNode findControllerService(String id);
+
+    /**
+     * @return a List of all Controller Services contained within this ProcessGroup and any child Process Groups
+     */
+    Set<ControllerServiceNode> findAllControllerServices();
 
     /**
      * Adds the given RemoteProcessGroup to this ProcessGroup
@@ -491,6 +523,13 @@ public interface ProcessGroup {
     ProcessGroup findProcessGroup(String id);
 
     /**
+     * @return a List of all ProcessGroups that are children or descendants of this
+     * ProcessGroup. This performs a recursive search of all descendant
+     * ProcessGroups
+     */
+    List<ProcessGroup> findAllProcessGroups();
+
+    /**
      * @param id of the group
      * @return the RemoteProcessGroup with the given ID, if it exists as a child
      * or descendant of this ProcessGroup. This performs a recursive search of
@@ -521,6 +560,14 @@ public interface ProcessGroup {
     List<ProcessorNode> findAllProcessors();
 
     /**
+     * @param id of the Label
+     * @return the Label with the given ID, if it exists as a child or
+     * descendant of this ProcessGroup. This performs a recursive search of all
+     * descendant ProcessGroups
+     */
+    Label findLabel(String id);
+
+    /**
      * @return a List of all Labels that are children or descendants of this
      * ProcessGroup. This performsn a recursive search of all descendant
      * ProcessGroups
@@ -536,6 +583,13 @@ public interface ProcessGroup {
     Port findInputPort(String id);
 
     /**
+     * @return a List of all InputPorts that are children or descendants of this
+     * ProcessGroup. This performs a recursive search of all descendant
+     * ProcessGroups
+     */
+    List<Port> findAllInputPorts();
+
+    /**
      * @param name of port
      * @return the input port with the given name, if it exists; otherwise
      * returns null
@@ -549,6 +603,13 @@ public interface ProcessGroup {
      * descendant ProcessGroups
      */
     Port findOutputPort(String id);
+
+    /**
+     * @return a List of all OutputPorts that are children or descendants of this
+     * ProcessGroup. This performs a recursive search of all descendant
+     * ProcessGroups
+     */
+    List<Port> findAllOutputPorts();
 
     /**
      * @param name of the port
@@ -598,6 +659,36 @@ public interface ProcessGroup {
      * ProcessGroup or has incoming or outgoing connections
      */
     void removeFunnel(Funnel funnel);
+
+    /**
+     * Adds the given Controller Service to this group
+     *
+     * @param service the service to add
+     */
+    void addControllerService(ControllerServiceNode service);
+
+    /**
+     * Returns the controller service with the given id
+     *
+     * @param id the id of the controller service
+     * @return the controller service with the given id, or <code>null</code> if no service exists with that id
+     */
+    ControllerServiceNode getControllerService(String id);
+
+    /**
+     * Returns a Set of all Controller Services that are available in this Process Group
+     *
+     * @param recursive if <code>true</code>, returns the Controller Services available to the parent Process Group, its parents, etc.
+     * @return a Set of all Controller Services that are available in this Process Group
+     */
+    Set<ControllerServiceNode> getControllerServices(boolean recursive);
+
+    /**
+     * Removes the given Controller Service from this group
+     *
+     * @param service the service to remove
+     */
+    void removeControllerService(ControllerServiceNode service);
 
     /**
      * @return <code>true</code> if this ProcessGroup has no Processors, Labels,
@@ -678,4 +769,45 @@ public interface ProcessGroup {
      * @throws IllegalStateException if the move is not valid at this time
      */
     void verifyCanMove(Snippet snippet, ProcessGroup newProcessGroup);
+
+    /**
+     * Adds the given template to this Process Group
+     *
+     * @param template the template to add
+     */
+    void addTemplate(Template template);
+
+    /**
+     * Removes the given template from the Process Group
+     *
+     * @param template the template to remove
+     */
+    void removeTemplate(Template template);
+
+    /**
+     * Returns the template with the given ID
+     *
+     * @param id the ID of the template
+     * @return the template with the given ID or <code>null</code> if no template
+     *         exists in this Process Group with the given ID
+     */
+    Template getTemplate(String id);
+
+    /**
+     * @param id of the template
+     * @return the Template with the given ID, if it exists as a child or
+     *         descendant of this ProcessGroup. This performs a recursive search of all
+     *         descendant ProcessGroups
+     */
+    Template findTemplate(String id);
+
+    /**
+     * @return a Set of all Templates that belong to this Process Group
+     */
+    Set<Template> getTemplates();
+
+    /**
+     * @return a Set of all Templates that belong to this Process Group and any descendant Process Groups
+     */
+    Set<Template> findAllTemplates();
 }

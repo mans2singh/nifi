@@ -19,6 +19,8 @@ package org.apache.nifi.attribute.expression.language;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -40,6 +42,7 @@ import org.antlr.runtime.tree.Tree;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+
 import org.mockito.Mockito;
 
 public class TestQuery {
@@ -56,6 +59,7 @@ public class TestQuery {
         assertValid("${attr:toNumber():multiply(3)}");
         assertValid("${hostname()}");
         assertValid("${literal(3)}");
+        assertValid("${random()}");
         // left here because it's convenient for looking at the output
         //System.out.println(Query.compile("").evaluate(null));
     }
@@ -1079,6 +1083,17 @@ public class TestQuery {
     }
 
     @Test
+    public void testIn() {
+        final Map<String, String> attributes = new HashMap<>();
+        attributes.put("myEnum", "JOHN");
+        verifyEquals("${ myEnum:in('PAUL', 'JOHN', 'MIKE') }", attributes, true);
+        verifyEquals("${ myEnum:in('RED', 'BLUE', 'GREEN') }", attributes, false);
+
+        attributes.put("toReplace", "BLUE");
+        verifyEquals("${ myEnum:in('RED', ${ toReplace:replace('BLUE', 'JOHN') }, 'GREEN') }", attributes, true);
+    }
+
+    @Test
     public void testSubjectAsEmbeddedExpressionWithSurroundChars() {
         final Map<String, String> attributes = new HashMap<>();
         attributes.put("b", "x");
@@ -1091,6 +1106,11 @@ public class TestQuery {
     @Test
     public void testToNumberFunctionReturnsNumberType() {
         assertEquals(ResultType.NUMBER, Query.getResultType("${header.size:toNumber()}"));
+    }
+
+    @Test
+    public void testRandomFunctionReturnsNumberType() {
+        assertEquals(ResultType.NUMBER, Query.getResultType("${random()}"));
     }
 
     @Test
@@ -1121,6 +1141,24 @@ public class TestQuery {
         final Map<String, String> attrs = Collections.<String, String> emptyMap();
         verifyEquals("${literal(2):gt(1)}", attrs, true);
         verifyEquals("${literal('hello'):substring(0, 1):equals('h')}", attrs, true);
+    }
+
+    @Test
+    public void testRandomFunction() {
+        final Map<String, String> attrs = Collections.<String, String> emptyMap();
+        final Long negOne = Long.valueOf(-1L);
+        final HashSet<Long> results = new HashSet<Long>(100);
+        for (int i = 0; i < results.size(); i++) {
+            long result = (Long) getResult("${random()}", attrs).getValue();
+            assertThat("random", result, greaterThan(negOne));
+            assertEquals("duplicate random", true, results.add(result));
+        }
+    }
+
+    QueryResult<?> getResult(String expr, Map<String, String> attrs) {
+        final Query query = Query.compile(expr);
+        final QueryResult<?> result = query.evaluate(attrs);
+        return result;
     }
 
     @Test
@@ -1163,10 +1201,20 @@ public class TestQuery {
         attributes.put("line", "Name, Age, Title");
 
         // Test "simple" case - comma separated with no quoted or escaped text
+        verifyEquals("${line:getDelimitedField(1)}", attributes, "Name");
+        verifyEquals("${line:getDelimitedField(1, ',')}", attributes, "Name");
+        verifyEquals("${line:getDelimitedField(1, ',', '\"')}", attributes, "Name");
+        verifyEquals("${line:getDelimitedField(1, ',', '\"', '\\\\')}", attributes, "Name");
+
         verifyEquals("${line:getDelimitedField(2)}", attributes, " Age");
         verifyEquals("${line:getDelimitedField(2, ',')}", attributes, " Age");
         verifyEquals("${line:getDelimitedField(2, ',', '\"')}", attributes, " Age");
         verifyEquals("${line:getDelimitedField(2, ',', '\"', '\\\\')}", attributes, " Age");
+
+        verifyEquals("${line:getDelimitedField(3)}", attributes, " Title");
+        verifyEquals("${line:getDelimitedField(3, ',')}", attributes, " Title");
+        verifyEquals("${line:getDelimitedField(3, ',', '\"')}", attributes, " Title");
+        verifyEquals("${line:getDelimitedField(3, ',', '\"', '\\\\')}", attributes, " Title");
 
         // test with a space in column
         attributes.put("line", "First Name, Age, Title");

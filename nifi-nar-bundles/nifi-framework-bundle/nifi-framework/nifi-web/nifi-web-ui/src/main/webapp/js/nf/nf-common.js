@@ -124,19 +124,6 @@ nf.Common = (function () {
         },
 
         /**
-         * Loads a script at the specified URL. Supports caching the script on the browser.
-         * 
-         * @param {string} url
-         */
-        cachedScript: function (url) {
-            return $.ajax({
-                dataType: 'script',
-                cache: true,
-                url: url
-            });
-        },
-
-        /**
          * Automatically refresh tokens by checking once an hour if its going to expire soon.
          */
         scheduleTokenRefresh: function () {
@@ -428,8 +415,7 @@ nf.Common = (function () {
                 nf.ContextMenu.hide();
 
                 // shut off the auto refresh
-                nf.Canvas.stopRevisionPolling();
-                nf.Canvas.stopStatusPolling();
+                nf.Canvas.stopPolling();
             }
         },
 
@@ -733,6 +719,43 @@ nf.Common = (function () {
                 }
             }
             return result;
+        },
+
+        /**
+         * Extracts the contents of the specified str after the strToFind. If the
+         * strToFind is not found or the last part of the str, an empty string is
+         * returned.
+         *
+         * @argument {string} str       The full string
+         * @argument {string} strToFind The substring to find
+         */
+        substringAfterFirst: function (str, strToFind) {
+            var result = '';
+            var indexOfStrToFind = str.indexOf(strToFind);
+            if (indexOfStrToFind >= 0) {
+                var indexAfterStrToFind = indexOfStrToFind + strToFind.length;
+                if (indexAfterStrToFind < str.length) {
+                    result = str.substr(indexAfterStrToFind);
+                }
+            }
+            return result;
+        },
+
+        /**
+         * Extracts the contents of the specified str before the strToFind. If the
+         * strToFind is not found or the first part of the str, an empty string is
+         * returned.
+         *
+         * @argument {string} str       The full string
+         * @argument {string} strToFind The substring to find
+         */
+        substringBeforeFirst: function(str, strToFind) {
+            var result = '';
+            var indexOfStrToFind = str.indexOf(strToFind);
+            if (indexOfStrToFind >= 0) {
+                result = str.substr(0, indexOfStrToFind);
+            }
+            return result
         },
 
         /**

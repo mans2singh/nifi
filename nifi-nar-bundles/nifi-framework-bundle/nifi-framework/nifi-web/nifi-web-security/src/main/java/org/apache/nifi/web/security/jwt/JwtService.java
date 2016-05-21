@@ -29,13 +29,13 @@ import io.jsonwebtoken.SigningKeyResolverAdapter;
 import io.jsonwebtoken.UnsupportedJwtException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.admin.service.AdministrationException;
+import org.apache.nifi.admin.service.KeyService;
+import org.apache.nifi.key.Key;
 import org.apache.nifi.web.security.token.LoginAuthenticationToken;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Calendar;
-import org.apache.nifi.admin.service.UserService;
-import org.apache.nifi.key.Key;
 
 /**
  *
@@ -48,10 +48,10 @@ public class JwtService {
     private static final String KEY_ID_CLAIM = "kid";
     private static final String USERNAME_CLAIM = "preferred_username";
 
-    private final UserService userService;
+    private final KeyService keyService;
 
-    public JwtService(final UserService userService) {
-        this.userService = userService;
+    public JwtService(final KeyService keyService) {
+        this.keyService = keyService;
     }
 
     public String getAuthenticationFromToken(final String base64EncodedToken) throws JwtException {
@@ -70,8 +70,6 @@ public class JwtService {
 
             // TODO: Validate issuer against active registry?
             if (StringUtils.isEmpty(jws.getBody().getIssuer())) {
-                // TODO: Remove after testing
-//                logger.info("Decoded JWT payload: " + jws.toString());
                 throw new JwtException("No issuer available in token");
             }
             return jws.getBody().getSubject();
@@ -92,7 +90,7 @@ public class JwtService {
 
                     // Get the key based on the key id in the claims
                     final Integer keyId = claims.get(KEY_ID_CLAIM, Integer.class);
-                    final Key key = userService.getKey(keyId);
+                    final Key key = keyService.getKey(keyId);
 
                     // Ensure we were able to find a key that was previously issued by this key service for this user
                     if (key == null || key.getKey() == null) {
@@ -138,7 +136,7 @@ public class JwtService {
 
         try {
             // Get/create the key for this user
-            final Key key = userService.getOrCreateKey(identity);
+            final Key key = keyService.getOrCreateKey(identity);
             final byte[] keyBytes = key.getKey().getBytes(StandardCharsets.UTF_8);
 
             logger.trace("Generating JWT for " + authenticationToken);

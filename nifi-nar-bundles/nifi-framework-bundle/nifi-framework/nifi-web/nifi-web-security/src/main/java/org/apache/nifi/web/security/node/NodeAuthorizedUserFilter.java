@@ -24,13 +24,14 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
+
+import org.apache.nifi.authorization.user.NiFiUserDetails;
 import org.apache.nifi.controller.FlowController;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.nifi.authentication.AuthenticationResponse;
-import org.apache.nifi.web.security.user.NiFiUserDetails;
-import org.apache.nifi.user.NiFiUser;
+import org.apache.nifi.authorization.user.NiFiUser;
 import org.apache.nifi.util.NiFiProperties;
-import org.apache.nifi.web.security.token.NiFiAuthorizationToken;
+import org.apache.nifi.web.security.token.NiFiAuthenticationToken;
 import org.apache.nifi.web.security.x509.X509CertificateExtractor;
 import org.apache.nifi.web.security.x509.X509IdentityProvider;
 import org.apache.nifi.web.util.WebUtils;
@@ -96,7 +97,7 @@ public class NodeAuthorizedUserFilter extends GenericFilterBean {
                                         httpServletRequest.getRequestURL().toString(), request.getRemoteAddr()));
 
                                 // create the authorized nifi token
-                                final NiFiAuthorizationToken token = new NiFiAuthorizationToken(userDetails);
+                                final NiFiAuthenticationToken token = new NiFiAuthenticationToken(userDetails);
                                 SecurityContextHolder.getContext().setAuthentication(token);
                             }
                         }

@@ -55,6 +55,7 @@ import org.apache.nifi.attribute.expression.language.evaluation.functions.Greate
 import org.apache.nifi.attribute.expression.language.evaluation.functions.GreaterThanOrEqualEvaluator;
 import org.apache.nifi.attribute.expression.language.evaluation.functions.HostnameEvaluator;
 import org.apache.nifi.attribute.expression.language.evaluation.functions.IPEvaluator;
+import org.apache.nifi.attribute.expression.language.evaluation.functions.InEvaluator;
 import org.apache.nifi.attribute.expression.language.evaluation.functions.IndexOfEvaluator;
 import org.apache.nifi.attribute.expression.language.evaluation.functions.IsEmptyEvaluator;
 import org.apache.nifi.attribute.expression.language.evaluation.functions.IsNullEvaluator;
@@ -74,6 +75,7 @@ import org.apache.nifi.attribute.expression.language.evaluation.functions.OneUpS
 import org.apache.nifi.attribute.expression.language.evaluation.functions.OrEvaluator;
 import org.apache.nifi.attribute.expression.language.evaluation.functions.PlusEvaluator;
 import org.apache.nifi.attribute.expression.language.evaluation.functions.PrependEvaluator;
+import org.apache.nifi.attribute.expression.language.evaluation.functions.RandomNumberGeneratorEvaluator;
 import org.apache.nifi.attribute.expression.language.evaluation.functions.ReplaceAllEvaluator;
 import org.apache.nifi.attribute.expression.language.evaluation.functions.ReplaceEmptyEvaluator;
 import org.apache.nifi.attribute.expression.language.evaluation.functions.ReplaceEvaluator;
@@ -130,6 +132,7 @@ import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpre
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.ATTRIBUTE_REFERENCE;
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.ATTR_NAME;
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.CONTAINS;
+import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.IN;
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.COUNT;
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.DIVIDE;
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.ENDS_WITH;
@@ -166,6 +169,7 @@ import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpre
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.PLUS;
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.PREPEND;
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.REPLACE;
+import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.RANDOM;
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.REPLACE_ALL;
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.REPLACE_EMPTY;
 import static org.apache.nifi.attribute.expression.language.antlr.AttributeExpressionParser.REPLACE_NULL;
@@ -878,6 +882,9 @@ public class Query {
             case NEXT_INT: {
                 return new OneUpSequenceEvaluator();
             }
+            case RANDOM: {
+                return new RandomNumberGeneratorEvaluator();
+            }
             default:
                 throw new AttributeExpressionLanguageParsingException("Unexpected token: " + tree.toString());
         }
@@ -1183,6 +1190,13 @@ public class Query {
                 return addToken(new ContainsEvaluator(toStringEvaluator(subjectEvaluator),
                     toStringEvaluator(argEvaluators.get(0), "first argument to contains")), "contains");
             }
+            case IN: {
+                List<Evaluator<String>> list = new ArrayList<Evaluator<String>>();
+                for(int i = 0; i < argEvaluators.size(); i++) {
+                    list.add(toStringEvaluator(argEvaluators.get(i), i + "th argument to in"));
+                }
+                return addToken(new InEvaluator(toStringEvaluator(subjectEvaluator), list), "in");
+            }
             case FIND: {
                 verifyArgCount(argEvaluators, 1, "find");
                 return addToken(new FindEvaluator(toStringEvaluator(subjectEvaluator),
@@ -1267,6 +1281,9 @@ public class Query {
             }
             case DIVIDE: {
                 return addToken(new DivideEvaluator(toNumberEvaluator(subjectEvaluator), toNumberEvaluator(argEvaluators.get(0))), "divide");
+            }
+            case RANDOM : {
+                return addToken(new RandomNumberGeneratorEvaluator(), "random");
             }
             case INDEX_OF: {
                 verifyArgCount(argEvaluators, 1, "indexOf");

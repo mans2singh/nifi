@@ -24,8 +24,8 @@ import org.apache.nifi.authentication.LoginIdentityProviderConfigurationContext;
 import org.apache.nifi.authentication.LoginIdentityProviderInitializationContext;
 import org.apache.nifi.authentication.exception.IdentityAccessException;
 import org.apache.nifi.authentication.exception.InvalidLoginCredentialsException;
-import org.apache.nifi.authorization.exception.ProviderCreationException;
-import org.apache.nifi.authorization.exception.ProviderDestructionException;
+import org.apache.nifi.authentication.exception.ProviderCreationException;
+import org.apache.nifi.authentication.exception.ProviderDestructionException;
 import org.apache.nifi.security.util.SslContextFactory;
 import org.apache.nifi.security.util.SslContextFactory.ClientAuth;
 import org.apache.nifi.util.FormatUtils;
@@ -191,8 +191,8 @@ public class LdapProvider implements LoginIdentityProvider {
         try {
             referralStrategy = ReferralStrategy.valueOf(rawReferralStrategy);
         } catch (final IllegalArgumentException iae) {
-            throw new ProviderCreationException(String.format("Unrecgonized authentication strategy '%s'. Possible values are [%s]",
-                    rawAuthenticationStrategy, StringUtils.join(ReferralStrategy.values(), ", ")));
+            throw new ProviderCreationException(String.format("Unrecognized referral strategy '%s'. Possible values are [%s]",
+                    rawReferralStrategy, StringUtils.join(ReferralStrategy.values(), ", ")));
         }
 
         context.setReferral(referralStrategy.toString());

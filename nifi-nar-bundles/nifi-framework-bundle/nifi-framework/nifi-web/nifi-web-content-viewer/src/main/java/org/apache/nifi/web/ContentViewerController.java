@@ -31,6 +31,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.nifi.authorization.AccessDeniedException;
 import org.apache.nifi.stream.io.StreamUtils;
 import org.apache.nifi.web.ViewableContent.DisplayMode;
 import org.apache.tika.detect.DefaultDetector;
@@ -39,7 +40,6 @@ import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.access.AccessDeniedException;
 
 /**
  * Controller servlet for viewing content. This is responsible for generating
@@ -150,10 +150,11 @@ public class ContentViewerController extends HttpServlet {
         // buffer the content to support reseting in case we need to detect the content type or char encoding
         try (final BufferedInputStream bis = new BufferedInputStream(downloadableContent.getContent());) {
             final String mimeType;
+            final String normalizedMimeType;
 
             // when standalone and we don't know the type is null as we were able to directly access the content bypassing the rest endpoint,
             // when clustered and we don't know the type set to octet stream since the content was retrieved from the node's rest endpoint
-            if (downloadableContent.getType() == null || downloadableContent.getType().equals(MediaType.OCTET_STREAM.toString())) {
+            if (downloadableContent.getType() == null || StringUtils.startsWithIgnoreCase(downloadableContent.getType(), MediaType.OCTET_STREAM.toString())) {
                 // attempt to detect the content stream if we don't know what it is ()
                 final DefaultDetector detector = new DefaultDetector();
 
@@ -170,6 +171,10 @@ public class ContentViewerController extends HttpServlet {
             } else {
                 mimeType = downloadableContent.getType();
             }
+
+            // Extract only mime type and subtype from content type (anything after the first ; are parameters)
+            // Lowercase so subsequent code does not need to implement case insensitivity
+            normalizedMimeType = mimeType.split(";",2)[0].toLowerCase();
 
             // add attributes needed for the header
             request.setAttribute("filename", downloadableContent.getFilename());
@@ -202,7 +207,7 @@ public class ContentViewerController extends HttpServlet {
                 request.getRequestDispatcher("/WEB-INF/jsp/hexview.jsp").include(request, response);
             } else {
                 // lookup a viewer for the content
-                final String contentViewerUri = servletContext.getInitParameter(mimeType);
+                final String contentViewerUri = servletContext.getInitParameter(normalizedMimeType);
 
                 // handle no viewer for content type
                 if (contentViewerUri == null) {
@@ -244,6 +249,11 @@ public class ContentViewerController extends HttpServlet {
 
                         @Override
                         public String getContentType() {
+                            return normalizedMimeType;
+                        }
+
+                        @Override
+                        public String getRawContentType() {
                             return mimeType;
                         }
                     });
@@ -293,12 +303,15 @@ public class ContentViewerController extends HttpServlet {
 
         final URI refUri = URI.create(ref);
         final String query = refUri.getQuery();
-        final String[] queryParameters = query.split("&");
 
         String rawClusterNodeId = null;
-        for (int i = 0; i < queryParameters.length; i++) {
-            if (queryParameters[0].startsWith("clusterNodeId=")) {
-                rawClusterNodeId = StringUtils.substringAfterLast(queryParameters[0], "clusterNodeId=");
+        if (query != null) {
+            final String[] queryParameters = query.split("&");
+
+            for (int i = 0; i < queryParameters.length; i++) {
+                if (queryParameters[0].startsWith("clusterNodeId=")) {
+                    rawClusterNodeId = StringUtils.substringAfterLast(queryParameters[0], "clusterNodeId=");
+                }
             }
         }
         final String clusterNodeId = rawClusterNodeId;

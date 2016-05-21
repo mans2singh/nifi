@@ -116,6 +116,7 @@ URL_ENCODE : 'urlEncode';
 URL_DECODE : 'urlDecode';
 NOT : 'not';
 COUNT : 'count';
+RANDOM : 'random';
 
 // 1 arg functions
 SUBSTRING_AFTER	: 'substringAfter';
@@ -159,6 +160,9 @@ REPLACE_ALL : 'replaceAll';
 
 // 4 arg functions
 GET_DELIMITED_FIELD	: 'getDelimitedField';
+
+// unlimited arg functions
+IN : 'in';
 
 // STRINGS
 STRING_LITERAL

@@ -19,6 +19,72 @@
 
 $(document).ready(function () {
     if (nf.Canvas.SUPPORTS_SVG) {
+
+        //Create Angular App
+        var app = angular.module('ngCanvasApp', ['ngResource', 'ngRoute', 'ngMaterial', 'ngSanitize', 'ngMessages']);
+
+        //Define Dependency Injection Annotations
+        nf.ng.Canvas.AppConfig.$inject = ['$mdThemingProvider', '$compileProvider'];
+        nf.ng.Canvas.AppCtrl.$inject = ['$scope', 'serviceProvider', 'headerCtrl', 'graphControlsCtrl'];
+        nf.ng.ServiceProvider.$inject = [];
+        nf.ng.BreadcrumbsCtrl.$inject = ['serviceProvider', '$sanitize'];
+        nf.ng.Canvas.HeaderCtrl.$inject = ['serviceProvider', 'toolboxCtrl', 'globalMenuCtrl', 'flowStatusCtrl'];
+        nf.ng.Canvas.FlowStatusCtrl.$inject = ['serviceProvider', '$sanitize'];
+        nf.ng.Canvas.GlobalMenuCtrl.$inject = ['serviceProvider'];
+        nf.ng.Canvas.ToolboxCtrl.$inject = ['processorComponent',
+            'inputPortComponent',
+            'outputPortComponent',
+            'groupComponent',
+            'remoteGroupComponent',
+            'funnelComponent',
+            'templateComponent',
+            'labelComponent'];
+        nf.ng.ProcessorComponent.$inject = ['serviceProvider'];
+        nf.ng.InputPortComponent.$inject = ['serviceProvider'];
+        nf.ng.OutputPortComponent.$inject = ['serviceProvider'];
+        nf.ng.GroupComponent.$inject = ['serviceProvider'];
+        nf.ng.RemoteProcessGroupComponent.$inject = ['serviceProvider'];
+        nf.ng.FunnelComponent.$inject = ['serviceProvider'];
+        nf.ng.TemplateComponent.$inject = ['serviceProvider'];
+        nf.ng.LabelComponent.$inject = ['serviceProvider'];
+        nf.ng.Canvas.GraphControlsCtrl.$inject = ['serviceProvider', 'navigateCtrl', 'operateCtrl'];
+        nf.ng.Canvas.NavigateCtrl.$inject = [];
+        nf.ng.Canvas.OperateCtrl.$inject = [];
+        nf.ng.BreadcrumbsDirective.$inject = ['breadcrumbsCtrl'];
+        nf.ng.DraggableDirective.$inject = [];
+
+        //Configure Angular App
+        app.config(nf.ng.Canvas.AppConfig);
+
+        //Define Angular App Controllers
+        app.controller('ngCanvasAppCtrl', nf.ng.Canvas.AppCtrl);
+
+        //Define Angular App Services
+        app.service('serviceProvider', nf.ng.ServiceProvider);
+        app.service('breadcrumbsCtrl', nf.ng.BreadcrumbsCtrl);
+        app.service('headerCtrl', nf.ng.Canvas.HeaderCtrl);
+        app.service('globalMenuCtrl', nf.ng.Canvas.GlobalMenuCtrl);
+        app.service('toolboxCtrl', nf.ng.Canvas.ToolboxCtrl);
+        app.service('flowStatusCtrl', nf.ng.Canvas.FlowStatusCtrl);
+        app.service('processorComponent', nf.ng.ProcessorComponent);
+        app.service('inputPortComponent', nf.ng.InputPortComponent);
+        app.service('outputPortComponent', nf.ng.OutputPortComponent);
+        app.service('groupComponent', nf.ng.GroupComponent);
+        app.service('remoteGroupComponent', nf.ng.RemoteProcessGroupComponent);
+        app.service('funnelComponent', nf.ng.FunnelComponent);
+        app.service('templateComponent', nf.ng.TemplateComponent);
+        app.service('labelComponent', nf.ng.LabelComponent);
+        app.service('graphControlsCtrl', nf.ng.Canvas.GraphControlsCtrl);
+        app.service('navigateCtrl', nf.ng.Canvas.NavigateCtrl);
+        app.service('operateCtrl', nf.ng.Canvas.OperateCtrl);
+
+        //Define Angular App Directives
+        app.directive('nfBreadcrumbs', nf.ng.BreadcrumbsDirective);
+        app.directive('nfDraggable', nf.ng.DraggableDirective);
+
+        //Manually Boostrap Angular App
+        angular.bootstrap($('body'), ['ngCanvasApp'], { strictDi: true });
+
         // initialize the NiFi
         nf.Canvas.init();
     } else {
@@ -42,8 +108,7 @@ nf.Canvas = (function () {
     var MIN_SCALE = 0.2;
     var MIN_SCALE_TO_RENDER = 0.6;
 
-    var revisionPolling = false;
-    var statusPolling = false;
+    var polling = false;
     var groupId = 'root';
     var groupName = null;
     var parentGroupId = null;
@@ -57,110 +122,43 @@ nf.Canvas = (function () {
 
     var config = {
         urls: {
-            identity: '../nifi-api/controller/identity',
+            api: '../nifi-api',
+            identity: '../nifi-api/flow/identity',
             authorities: '../nifi-api/controller/authorities',
-            revision: '../nifi-api/controller/revision',
-            status: '../nifi-api/controller/status',
-            bulletinBoard: '../nifi-api/controller/bulletin-board',
-            banners: '../nifi-api/controller/banners',
-            controller: '../nifi-api/controller',
+            kerberos: '../nifi-api/access/kerberos',
+            revision: '../nifi-api/flow/revision',
+            banners: '../nifi-api/flow/banners',
             controllerConfig: '../nifi-api/controller/config',
-            accessConfig: '../nifi-api/access/config',
-            cluster: '../nifi-api/cluster',
-            d3Script: 'js/d3/d3.min.js'
+            cluster: '../nifi-api/cluster'
         }
     };
-
+    
     /**
-     * Generates the breadcrumbs.
-     * 
-     * @argument {object} processGroup      The process group
-     */
-    var generateBreadcrumbs = function (processGroup) {
-        // create the link for loading the correct group
-        var groupLink = $('<span class="link"></span>').text(processGroup.name).click(function () {
-            nf.CanvasUtils.enterGroup(processGroup.id);
-        });
-
-        // make the current group bold
-        if (nf.Canvas.getGroupId() === processGroup.id) {
-            groupLink.css('font-weight', 'bold');
-        }
-
-        // if there is a parent, create the appropriate mark up
-        if (nf.Common.isDefinedAndNotNull(processGroup.parent)) {
-            var separator = $('<span>&raquo;</span>').css({
-                'color': '#598599',
-                'margin': '0 10px'
-            });
-            $('#data-flow-title-container').append(generateBreadcrumbs(processGroup.parent)).append(separator);
-        }
-
-        // append this link
-        $('#data-flow-title-container').append(groupLink);
-        return groupLink;
-    };
-
-    /**
-     * Loads D3.
-     */
-    var loadD3 = function () {
-        return nf.Common.cachedScript(config.urls.d3Script);
-    };
-
-    /**
-     * Starts polling for the revision.
-     * 
+     * Starts polling.
+     *
      * @argument {int} autoRefreshInterval      The auto refresh interval
      */
-    var startRevisionPolling = function (autoRefreshInterval) {
+    var startPolling = function (autoRefreshInterval) {
         // set polling flag
-        revisionPolling = true;
-        pollForRevision(autoRefreshInterval);
+        polling = true;
+        poll(autoRefreshInterval);
     };
 
     /**
-     * Polls for the revision.
-     * 
+     * Register the pooler.
+     *
      * @argument {int} autoRefreshInterval      The auto refresh interval
      */
-    var pollForRevision = function (autoRefreshInterval) {
+    var poll = function (autoRefreshInterval) {
         // ensure we're suppose to poll
-        if (revisionPolling) {
-            // check the revision
-            checkRevision().done(function () {
-                // start the wait to poll again
-                setTimeout(function () {
-                    pollForRevision(autoRefreshInterval);
-                }, autoRefreshInterval * 1000);
-            });
-        }
-    };
-
-    /**
-     * Start polling for the status.
-     * 
-     * @argument {int} autoRefreshInterval      The auto refresh interval
-     */
-    var startStatusPolling = function (autoRefreshInterval) {
-        // set polling flag
-        statusPolling = true;
-        pollForStatus(autoRefreshInterval);
-    };
-
-    /**
-     * Register the status poller.
-     * 
-     * @argument {int} autoRefreshInterval      The auto refresh interval
-     */
-    var pollForStatus = function (autoRefreshInterval) {
-        // ensure we're suppose to poll
-        if (statusPolling) {
+        if (polling) {
             // reload the status
-            nf.Canvas.reloadStatus().done(function () {
+            nf.Canvas.reload({
+                'transition': true
+            }).done(function () {
                 // start the wait to poll again
                 setTimeout(function () {
-                    pollForStatus(autoRefreshInterval);
+                    poll(autoRefreshInterval);
                 }, autoRefreshInterval * 1000);
             });
         }
@@ -169,50 +167,50 @@ nf.Canvas = (function () {
     /**
      * Checks the current revision against this version of the flow.
      */
-    var checkRevision = function () {
-        // get the revision
-        return $.ajax({
-            type: 'GET',
-            url: config.urls.revision,
-            dataType: 'json'
-        }).done(function (response) {
-            if (nf.Common.isDefinedAndNotNull(response.revision)) {
-                var revision = response.revision;
-                var currentRevision = nf.Client.getRevision();
-
-                // if there is a newer revision, there are outstanding
-                // changes that need to be updated
-                if (revision.version > currentRevision.version && revision.clientId !== currentRevision.clientId) {
-                    var refreshContainer = $('#refresh-required-container');
-                    var settingsRefreshIcon = $('#settings-refresh-required-icon');
-
-                    // insert the refresh needed text in the canvas - if necessary
-                    if (!refreshContainer.is(':visible')) {
-                        $('#stats-last-refreshed').addClass('alert');
-                        var refreshMessage = "This flow has been modified by '" + revision.lastModifier + "'. Please refresh.";
-
-                        // update the tooltip
-                        var refreshRequiredIcon = $('#refresh-required-icon');
-                        if (refreshRequiredIcon.data('qtip')) {
-                            refreshRequiredIcon.qtip('option', 'content.text', refreshMessage);
-                        } else {
-                            refreshRequiredIcon.qtip($.extend({
-                                content: refreshMessage
-                            }, nf.CanvasUtils.config.systemTooltipConfig));
-                        }
-
-                        refreshContainer.show();
-                    }
-
-                    // insert the refresh needed text in the settings - if necessary
-                    if (!settingsRefreshIcon.is(':visible')) {
-                        $('#settings-last-refreshed').addClass('alert');
-                        settingsRefreshIcon.show();
-                    }
-                }
-            }
-        }).fail(nf.Common.handleAjaxError);
-    };
+    // var checkRevision = function () {
+    //     // get the revision
+    //     return $.ajax({
+    //         type: 'GET',
+    //         url: config.urls.revision,
+    //         dataType: 'json'
+    //     }).done(function (response) {
+    //         if (nf.Common.isDefinedAndNotNull(response.revision)) {
+    //             var revision = response.revision;
+    //             var currentRevision = nf.Client.getRevision();
+    //
+    //             // if there is a newer revision, there are outstanding
+    //             // changes that need to be updated
+    //             if (revision.version > currentRevision.version && revision.clientId !== currentRevision.clientId) {
+    //                 var refreshContainer = $('#refresh-required-container');
+    //                 var settingsRefreshIcon = $('#settings-refresh-required-icon');
+    //
+    //                 // insert the refresh needed text in the canvas - if necessary
+    //                 if (!refreshContainer.is(':visible')) {
+    //                     $('#stats-last-refreshed').addClass('alert');
+    //                     var refreshMessage = "This flow has been modified by '" + revision.lastModifier + "'. Please refresh.";
+    //
+    //                     // update the tooltip
+    //                     var refreshRequiredIcon = $('#refresh-required-icon');
+    //                     if (refreshRequiredIcon.data('qtip')) {
+    //                         refreshRequiredIcon.qtip('option', 'content.text', refreshMessage);
+    //                     } else {
+    //                         refreshRequiredIcon.qtip($.extend({
+    //                             content: refreshMessage
+    //                         }, nf.CanvasUtils.config.systemTooltipConfig));
+    //                     }
+    //
+    //                     refreshContainer.show();
+    //                 }
+    //
+    //                 // insert the refresh needed text in the settings - if necessary
+    //                 if (!settingsRefreshIcon.is(':visible')) {
+    //                     $('#settings-last-refreshed').addClass('alert');
+    //                     settingsRefreshIcon.show();
+    //                 }
+    //             }
+    //         }
+    //     }).fail(nf.Common.handleAjaxError);
+    // };
 
     /**
      * Initializes the canvas.
@@ -222,165 +220,132 @@ nf.Canvas = (function () {
 
         // create the canvas
         svg = d3.select('#canvas-container').append('svg')
-                .on('contextmenu', function () {
-                    // reset the canvas click flag
-                    canvasClicked = false;
+            .on('contextmenu', function () {
+                // reset the canvas click flag
+                canvasClicked = false;
 
-                    // since the context menu event propagated back to the canvas, clear the selection
-                    nf.CanvasUtils.getSelection().classed('selected', false);
+                // since the context menu event propagated back to the canvas, clear the selection
+                nf.CanvasUtils.getSelection().classed('selected', false);
 
-                    // show the context menu on the canvas
-                    nf.ContextMenu.show();
+                // show the context menu on the canvas
+                nf.ContextMenu.show();
 
-                    // prevent default browser behavior
-                    d3.event.preventDefault();
-                });
+                // prevent default browser behavior
+                d3.event.preventDefault();
+            });
 
         // create the definitions element
         var defs = svg.append('defs');
 
         // create arrow definitions for the various line types
         defs.selectAll('marker')
-                .data(['normal', 'ghost'])
-                .enter().append('marker')
-                .attr({
-                    'id': function (d) {
-                        return d;
-                    },
-                    'viewBox': '0 0 6 6',
-                    'refX': 5,
-                    'refY': 3,
-                    'markerWidth': 6,
-                    'markerHeight': 6,
-                    'orient': 'auto',
-                    'fill': function (d) {
-                        if (d === 'ghost') {
-                            return '#aaaaaa';
-                        } else {
-                            return '#000000';
-                        }
+            .data(['normal', 'ghost', 'unauthorized'])
+            .enter().append('marker')
+            .attr({
+                'id': function (d) {
+                    return d;
+                },
+                'viewBox': '0 0 6 6',
+                'refX': 5,
+                'refY': 3,
+                'markerWidth': 6,
+                'markerHeight': 6,
+                'orient': 'auto',
+                'fill': function (d) {
+                    if (d === 'ghost') {
+                        return '#aaaaaa';
+                    } else if (d === 'unauthorized') {
+                        return '#ba554a';
+                    } else {
+                        return '#000000';
                     }
-                })
-                .append('path')
-                .attr('d', 'M2,3 L0,6 L6,3 L0,0 z');
+                }
+            })
+            .append('path')
+            .attr('d', 'M2,3 L0,6 L6,3 L0,0 z');
 
-        // define the gradient for the processor stats background
-        var processGroupStatsBackground = defs.append('linearGradient')
-                .attr({
-                    'id': 'process-group-stats-background',
-                    'x1': '0%',
-                    'y1': '100%',
-                    'x2': '0%',
-                    'y2': '0%'
-                });
+        // filter for drop shadow
+        var filter = defs.append('filter')
+            .attr('id', 'component-drop-shadow');
 
-        processGroupStatsBackground.append('stop')
-                .attr({
-                    'offset': '0%',
-                    'stop-color': '#dedede'
-                });
+        // blur
+        filter.append('feGaussianBlur')
+            .attr('in', 'SourceAlpha')
+            .attr('stdDeviation', 2)
+            .attr('result', 'blur');
 
-        processGroupStatsBackground.append('stop')
-                .attr({
-                    'offset': '50%',
-                    'stop-color': '#ffffff'
-                });
+        // offset
+        filter.append('feOffset')
+            .attr('in', 'blur')
+            .attr('dx', 0)
+            .attr('dy', 1)
+            .attr('result', 'offsetBlur');
 
-        processGroupStatsBackground.append('stop')
-                .attr({
-                    'offset': '100%',
-                    'stop-color': '#dedede'
-                });
+        // color/opacity
+        filter.append('feFlood')
+            .attr('flood-color', '#000000')
+            .attr('flood-opacity', 0.25)
+            .attr('result', 'offsetColor');
 
-        // define the gradient for the processor stats background
-        var processorStatsBackground = defs.append('linearGradient')
-                .attr({
-                    'id': 'processor-stats-background',
-                    'x1': '0%',
-                    'y1': '100%',
-                    'x2': '0%',
-                    'y2': '0%'
-                });
+        // combine
+        filter.append('feComposite')
+            .attr('in', 'offsetColor')
+            .attr('in2', 'offsetBlur')
+            .attr('operator', 'in')
+            .attr('result', 'offsetColorBlur');
 
-        processorStatsBackground.append('stop')
-                .attr({
-                    'offset': '0%',
-                    'stop-color': '#6f97ac'
-                });
-
-        processorStatsBackground.append('stop')
-                .attr({
-                    'offset': '100%',
-                    'stop-color': '#30505c'
-                });
-
-        // define the gradient for the port background
-        var portBackground = defs.append('linearGradient')
-                .attr({
-                    'id': 'port-background',
-                    'x1': '0%',
-                    'y1': '100%',
-                    'x2': '0%',
-                    'y2': '0%'
-                });
-
-        portBackground.append('stop')
-                .attr({
-                    'offset': '0%',
-                    'stop-color': '#aaaaaa'
-                });
-
-        portBackground.append('stop')
-                .attr({
-                    'offset': '100%',
-                    'stop-color': '#ffffff'
-                });
+        // stack the effect under the source graph
+        var feMerge = filter.append('feMerge');
+        feMerge.append('feMergeNode')
+            .attr('in', 'offsetColorBlur');
+        feMerge.append('feMergeNode')
+            .attr('in', 'SourceGraphic');
 
         // define the gradient for the expiration icon
         var expirationBackground = defs.append('linearGradient')
-                .attr({
-                    'id': 'expiration',
-                    'x1': '0%',
-                    'y1': '0%',
-                    'x2': '0%',
-                    'y2': '100%'
-                });
+            .attr({
+                'id': 'expiration',
+                'x1': '0%',
+                'y1': '0%',
+                'x2': '0%',
+                'y2': '100%'
+            });
 
         expirationBackground.append('stop')
-                .attr({
-                    'offset': '0%',
-                    'stop-color': '#aeafb1'
-                });
+            .attr({
+                'offset': '0%',
+                'stop-color': '#aeafb1'
+            });
 
         expirationBackground.append('stop')
-                .attr({
-                    'offset': '100%',
-                    'stop-color': '#87888a'
-                });
+            .attr({
+                'offset': '100%',
+                'stop-color': '#87888a'
+            });
 
         // create the canvas element
         canvas = svg.append('g')
-                .attr({
-                    'transform': 'translate(' + TRANSLATE + ') scale(' + SCALE + ')',
-                    'pointer-events': 'all',
-                    'id': 'canvas'
-                });
+            .attr({
+                'transform': 'translate(' + TRANSLATE + ') scale(' + SCALE + ')',
+                'pointer-events': 'all',
+                'id': 'canvas'
+            });
 
         // handle canvas events
         svg.on('mousedown.selection', function () {
-            canvasClicked = true;
+                canvasClicked = true;
 
-            if (d3.event.button !== 0) {
-                // prevent further propagation (to parents and others handlers 
-                // on the same element to prevent zoom behavior)
-                d3.event.stopImmediatePropagation();
-                return;
-            }
+                if (d3.event.button !== 0) {
+                    // prevent further propagation (to parents and others handlers
+                    // on the same element to prevent zoom behavior)
+                    d3.event.stopImmediatePropagation();
+                    return;
+                }
 
-            // show selection box if shift is held down
-            if (d3.event.shiftKey) {
-                var position = d3.mouse(canvas.node());
-                canvas.append('rect')
+                // show selection box if shift is held down
+                if (d3.event.shiftKey) {
+                    var position = d3.mouse(canvas.node());
+                    canvas.append('rect')
                         .attr('rx', 6)
                         .attr('ry', 6)
                         .attr('x', position[0])
@@ -396,108 +361,108 @@ nf.Canvas = (function () {
                         })
                         .datum(position);
 
-                // prevent further propagation (to parents and others handlers 
-                // on the same element to prevent zoom behavior)
-                d3.event.stopImmediatePropagation();
+                    // prevent further propagation (to parents and others handlers
+                    // on the same element to prevent zoom behavior)
+                    d3.event.stopImmediatePropagation();
 
-                // prevents the browser from changing to a text selection cursor
-                d3.event.preventDefault();
-            }
-        })
-                .on('mousemove.selection', function () {
-                    // update selection box if shift is held down
-                    if (d3.event.shiftKey) {
-                        // get the selection box
-                        var selectionBox = d3.select('rect.selection');
-                        if (!selectionBox.empty()) {
-                            // get the original position
-                            var originalPosition = selectionBox.datum();
-                            var position = d3.mouse(canvas.node());
-
-                            var d = {};
-                            if (originalPosition[0] < position[0]) {
-                                d.x = originalPosition[0];
-                                d.width = position[0] - originalPosition[0];
-                            } else {
-                                d.x = position[0];
-                                d.width = originalPosition[0] - position[0];
-                            }
-
-                            if (originalPosition[1] < position[1]) {
-                                d.y = originalPosition[1];
-                                d.height = position[1] - originalPosition[1];
-                            } else {
-                                d.y = position[1];
-                                d.height = originalPosition[1] - position[1];
-                            }
-
-                            // update the selection box
-                            selectionBox.attr(d);
-
-                            // prevent further propagation (to parents)
-                            d3.event.stopPropagation();
-                        }
-                    }
-                })
-                .on('mouseup.selection', function () {
-                    // ensure this originated from clicking the canvas, not a component.
-                    // when clicking on a component, the event propagation is stopped so
-                    // it never reaches the canvas. we cannot do this however on up events
-                    // since the drag events break down
-                    if (canvasClicked === false) {
-                        return;
-                    }
-
-                    // reset the canvas click flag
-                    canvasClicked = false;
-
-                    // get the selection box 
+                    // prevents the browser from changing to a text selection cursor
+                    d3.event.preventDefault();
+                }
+            })
+            .on('mousemove.selection', function () {
+                // update selection box if shift is held down
+                if (d3.event.shiftKey) {
+                    // get the selection box
                     var selectionBox = d3.select('rect.selection');
                     if (!selectionBox.empty()) {
-                        var selectionBoundingBox = {
-                            x: parseInt(selectionBox.attr('x'), 10),
-                            y: parseInt(selectionBox.attr('y'), 10),
-                            width: parseInt(selectionBox.attr('width'), 10),
-                            height: parseInt(selectionBox.attr('height'), 10)
-                        };
+                        // get the original position
+                        var originalPosition = selectionBox.datum();
+                        var position = d3.mouse(canvas.node());
 
-                        // see if a component should be selected or not
-                        d3.selectAll('g.component').classed('selected', function (d) {
-                            // consider it selected if its already selected or enclosed in the bounding box
-                            return d3.select(this).classed('selected') ||
-                                    d.component.position.x >= selectionBoundingBox.x && (d.component.position.x + d.dimensions.width) <= (selectionBoundingBox.x + selectionBoundingBox.width) &&
-                                    d.component.position.y >= selectionBoundingBox.y && (d.component.position.y + d.dimensions.height) <= (selectionBoundingBox.y + selectionBoundingBox.height);
-                        });
+                        var d = {};
+                        if (originalPosition[0] < position[0]) {
+                            d.x = originalPosition[0];
+                            d.width = position[0] - originalPosition[0];
+                        } else {
+                            d.x = position[0];
+                            d.width = originalPosition[0] - position[0];
+                        }
 
-                        // see if a connection should be selected or not
-                        d3.selectAll('g.connection').classed('selected', function (d) {
-                            // consider all points
-                            var points = [d.start].concat(d.bends, [d.end]);
+                        if (originalPosition[1] < position[1]) {
+                            d.y = originalPosition[1];
+                            d.height = position[1] - originalPosition[1];
+                        } else {
+                            d.y = position[1];
+                            d.height = originalPosition[1] - position[1];
+                        }
 
-                            // determine the bounding box
-                            var x = d3.extent(points, function (pt) {
-                                return pt.x;
-                            });
-                            var y = d3.extent(points, function (pt) {
-                                return pt.y;
-                            });
+                        // update the selection box
+                        selectionBox.attr(d);
 
-                            // consider it selected if its already selected or enclosed in the bounding box
-                            return d3.select(this).classed('selected') ||
-                                    x[0] >= selectionBoundingBox.x && x[1] <= (selectionBoundingBox.x + selectionBoundingBox.width) &&
-                                    y[0] >= selectionBoundingBox.y && y[1] <= (selectionBoundingBox.y + selectionBoundingBox.height);
-                        });
-
-                        // remove the selection box
-                        selectionBox.remove();
-                    } else if (panning === false) {
-                        // deselect as necessary if we are not panning
-                        nf.CanvasUtils.getSelection().classed('selected', false);
+                        // prevent further propagation (to parents)
+                        d3.event.stopPropagation();
                     }
+                }
+            })
+            .on('mouseup.selection', function () {
+                // ensure this originated from clicking the canvas, not a component.
+                // when clicking on a component, the event propagation is stopped so
+                // it never reaches the canvas. we cannot do this however on up events
+                // since the drag events break down
+                if (canvasClicked === false) {
+                    return;
+                }
 
-                    // update the toolbar
-                    nf.CanvasToolbar.refresh();
-                });
+                // reset the canvas click flag
+                canvasClicked = false;
+
+                // get the selection box
+                var selectionBox = d3.select('rect.selection');
+                if (!selectionBox.empty()) {
+                    var selectionBoundingBox = {
+                        x: parseInt(selectionBox.attr('x'), 10),
+                        y: parseInt(selectionBox.attr('y'), 10),
+                        width: parseInt(selectionBox.attr('width'), 10),
+                        height: parseInt(selectionBox.attr('height'), 10)
+                    };
+
+                    // see if a component should be selected or not
+                    d3.selectAll('g.component').classed('selected', function (d) {
+                        // consider it selected if its already selected or enclosed in the bounding box
+                        return d3.select(this).classed('selected') ||
+                            d.position.x >= selectionBoundingBox.x && (d.position.x + d.dimensions.width) <= (selectionBoundingBox.x + selectionBoundingBox.width) &&
+                            d.position.y >= selectionBoundingBox.y && (d.position.y + d.dimensions.height) <= (selectionBoundingBox.y + selectionBoundingBox.height);
+                    });
+
+                    // see if a connection should be selected or not
+                    d3.selectAll('g.connection').classed('selected', function (d) {
+                        // consider all points
+                        var points = [d.start].concat(d.bends, [d.end]);
+
+                        // determine the bounding box
+                        var x = d3.extent(points, function (pt) {
+                            return pt.x;
+                        });
+                        var y = d3.extent(points, function (pt) {
+                            return pt.y;
+                        });
+
+                        // consider it selected if its already selected or enclosed in the bounding box
+                        return d3.select(this).classed('selected') ||
+                            x[0] >= selectionBoundingBox.x && x[1] <= (selectionBoundingBox.x + selectionBoundingBox.width) &&
+                            y[0] >= selectionBoundingBox.y && y[1] <= (selectionBoundingBox.y + selectionBoundingBox.height);
+                    });
+
+                    // remove the selection box
+                    selectionBox.remove();
+                } else if (panning === false) {
+                    // deselect as necessary if we are not panning
+                    nf.CanvasUtils.getSelection().classed('selected', false);
+                }
+
+                // inform Angular app values have changed
+                nf.ng.Bridge.digest();
+            });
 
         // define a function for update the graph dimensions
         var updateGraphSize = function () {
@@ -523,6 +488,9 @@ nf.Canvas = (function () {
                 'width': canvasContainer.width()
             });
 
+            //breadcrumbs
+            nf.ng.Bridge.get('appCtrl.serviceProvider.breadcrumbsCtrl').updateBreadcrumbsCss({'bottom': bottom + 'px'});
+
             // body
             $('#canvas-body').css({
                 'height': windowHeight + 'px',
@@ -530,10 +498,19 @@ nf.Canvas = (function () {
             });
         };
 
+        // define a function for update the flow status dimensions
+        var updateFlowStatusContainerSize = function () {
+            $('#flow-status-container').css({
+                'width': ((($('#nifi-logo').width() + $('#component-container').width())/$(window).width())*100)*2 + '%'
+            });
+        };
+        updateFlowStatusContainerSize();
+
         // listen for browser resize events to reset the graph size
         $(window).on('resize', function (e) {
             if (e.target === window) {
                 updateGraphSize();
+                updateFlowStatusContainerSize();
                 nf.Settings.resetTableSize();
             }
         }).on('keydown', function (evt) {
@@ -550,13 +527,13 @@ nf.Canvas = (function () {
             if (isCtrl) {
                 if (evt.keyCode === 82) {
                     // ctrl-r
-                    nf.Actions.reloadStatus();
+                    nf.Actions.reload();
 
                     // default prevented in nf-universal-capture.js
                 } else if (evt.keyCode === 65) {
                     // ctrl-a
                     nf.Actions.selectAll();
-                    nf.CanvasToolbar.refresh();
+                    nf.ng.Bridge.digest();
 
                     // only want to prevent default if the action was performed, otherwise default select all would be overridden
                     evt.preventDefault();
@@ -598,8 +575,9 @@ nf.Canvas = (function () {
             // ensure the banners response is specified
             if (nf.Common.isDefinedAndNotNull(response.banners)) {
                 if (nf.Common.isDefinedAndNotNull(response.banners.headerText) && response.banners.headerText !== '') {
-                    // update the header text
-                    $('#banner-header').addClass('banner-header-background').text(response.banners.headerText);
+                    // update the header text and show it
+                    $('#banner-header').addClass('banner-header-background').text(response.banners.headerText).show();
+                    $('#canvas-container').css('top', '98px');
                 }
 
                 if (nf.Common.isDefinedAndNotNull(response.banners.footerText) && response.banners.footerText !== '') {
@@ -622,246 +600,56 @@ nf.Canvas = (function () {
     };
 
     /**
-     * Sets the colors for the specified type.
-     * 
-     * @param {array} colors The possible colors
-     * @param {string} type The component type for these colors
-     */
-    var setColors = function (colors, type) {
-        var defs = d3.select('defs');
-
-        // update processors
-        var processorSelection = defs.selectAll('linearGradient.' + type + '-background').data(colors, function (d) {
-            return d;
-        });
-
-        // define the gradient for the processor background
-        var gradient = processorSelection.enter().append('linearGradient')
-                .attr({
-                    'id': function (d) {
-                        return type + '-background-' + d;
-                    },
-                    'class': type + '-background',
-                    'x1': '0%',
-                    'y1': '100%',
-                    'x2': '0%',
-                    'y2': '0%'
-                });
-
-        gradient.append('stop')
-                .attr({
-                    'offset': '0%',
-                    'stop-color': function (d) {
-                        return '#' + d;
-                    }
-                });
-
-        gradient.append('stop')
-                .attr({
-                    'offset': '100%',
-                    'stop-color': '#ffffff'
-                });
-
-        // remove old processor colors
-        processorSelection.exit().remove();
-    };
-
-    /**
-     * Reloads the current status of this flow.
-     */
-    var reloadFlowStatus = function () {
-        return $.ajax({
-            type: 'GET',
-            url: config.urls.status,
-            dataType: 'json'
-        }).done(function (response) {
-            // report the updated status
-            if (nf.Common.isDefinedAndNotNull(response.controllerStatus)) {
-                var controllerStatus = response.controllerStatus;
-
-                // update the report values
-                $('#active-thread-count').text(controllerStatus.activeThreadCount);
-                $('#total-queued').text(controllerStatus.queued);
-
-                // update the connected nodes if applicable
-                if (nf.Common.isDefinedAndNotNull(controllerStatus.connectedNodes)) {
-                    var connectedNodes = controllerStatus.connectedNodes.split(' / ');
-                    if (connectedNodes.length === 2 && connectedNodes[0] !== connectedNodes[1]) {
-                        $('#connected-nodes-count').addClass('alert');
-                    } else {
-                        $('#connected-nodes-count').removeClass('alert');
-                    }
-
-                    // set the connected nodes
-                    $('#connected-nodes-count').text(controllerStatus.connectedNodes);
-                }
-
-                // update the component counts
-                if (nf.Common.isDefinedAndNotNull(controllerStatus.activeRemotePortCount)) {
-                    $('#controller-transmitting-count').text(controllerStatus.activeRemotePortCount);
-                } else {
-                    $('#controller-transmitting-count').text('-');
-                }
-                if (nf.Common.isDefinedAndNotNull(controllerStatus.inactiveRemotePortCount)) {
-                    $('#controller-not-transmitting-count').text(controllerStatus.inactiveRemotePortCount);
-                } else {
-                    $('#controller-not-transmitting-count').text('-');
-                }
-                if (nf.Common.isDefinedAndNotNull(controllerStatus.runningCount)) {
-                    $('#controller-running-count').text(controllerStatus.runningCount);
-                } else {
-                    $('#controller-running-count').text('-');
-                }
-                if (nf.Common.isDefinedAndNotNull(controllerStatus.stoppedCount)) {
-                    $('#controller-stopped-count').text(controllerStatus.stoppedCount);
-                } else {
-                    $('#controller-stopped-count').text('-');
-                }
-                if (nf.Common.isDefinedAndNotNull(controllerStatus.invalidCount)) {
-                    $('#controller-invalid-count').text(controllerStatus.invalidCount);
-                } else {
-                    $('#controller-invalid-count').text('-');
-                }
-                if (nf.Common.isDefinedAndNotNull(controllerStatus.disabledCount)) {
-                    $('#controller-disabled-count').text(controllerStatus.disabledCount);
-                } else {
-                    $('#controller-disabled-count').text('-');
-                }
-
-                // icon for system bulletins
-                var bulletinIcon = $('#controller-bulletins');
-                var currentBulletins = bulletinIcon.data('bulletins');
-
-                // update the bulletins if necessary
-                if (nf.Common.doBulletinsDiffer(currentBulletins, controllerStatus.bulletins)) {
-                    bulletinIcon.data('bulletins', controllerStatus.bulletins);
-
-                    // get the formatted the bulletins
-                    var bulletins = nf.Common.getFormattedBulletins(controllerStatus.bulletins);
-
-                    // bulletins for this processor are now gone
-                    if (bulletins.length === 0) {
-                        if (bulletinIcon.data('qtip')) {
-                            bulletinIcon.removeClass('has-bulletins').qtip('api').destroy(true);
-                        }
-
-                        // hide the icon
-                        bulletinIcon.hide();
-                    } else {
-                        var newBulletins = nf.Common.formatUnorderedList(bulletins);
-
-                        // different bulletins, refresh
-                        if (bulletinIcon.data('qtip')) {
-                            bulletinIcon.qtip('option', 'content.text', newBulletins);
-                        } else {
-                            // no bulletins before, show icon and tips
-                            bulletinIcon.addClass('has-bulletins').qtip($.extend({
-                                content: newBulletins
-                            }, nf.CanvasUtils.config.systemTooltipConfig));
-                        }
-
-                        // show the icon
-                        bulletinIcon.show();
-                    }
-                }
-
-                // update controller service and reporting task bulletins
-                nf.Settings.setBulletins(controllerStatus.controllerServiceBulletins, controllerStatus.reportingTaskBulletins);
-
-                // handle any pending user request
-                if (controllerStatus.hasPendingAccounts === true) {
-                    $('#has-pending-accounts').show();
-                } else {
-                    $('#has-pending-accounts').hide();
-                }
-            }
-        }).fail(nf.Common.handleAjaxError);
-    };
-
-    /**
      * Refreshes the graph.
-     * 
+     *
      * @argument {string} processGroupId        The process group id
+     * @argument {object} options               Configuration options
      */
-    var reloadProcessGroup = function (processGroupId) {
+    var reloadProcessGroup = function (processGroupId, options) {
         // load the controller
         return $.ajax({
             type: 'GET',
-            url: config.urls.controller + '/process-groups/' + encodeURIComponent(processGroupId),
+            url: config.urls.api + '/flow/process-groups/' + encodeURIComponent(processGroupId),
             data: {
                 verbose: true
             },
             dataType: 'json'
-        }).done(function (processGroupResponse) {
-            // set the revision
-            nf.Client.setRevision(processGroupResponse.revision);
-
+        }).done(function (flowResponse) {
             // get the controller and its contents
-            var processGroup = processGroupResponse.processGroup;
+            var processGroupFlow = flowResponse.processGroupFlow;
 
             // set the group details
-            nf.Canvas.setGroupId(processGroup.id);
-            nf.Canvas.setGroupName(processGroup.name);
+            nf.Canvas.setGroupId(processGroupFlow.id);
 
             // update the breadcrumbs
-            $('#data-flow-title-container').empty();
-            generateBreadcrumbs(processGroup);
+            nf.ng.Bridge.get('appCtrl.serviceProvider.breadcrumbsCtrl').resetBreadcrumbs();
+            nf.ng.Bridge.get('appCtrl.serviceProvider.breadcrumbsCtrl').generateBreadcrumbs(processGroupFlow.breadcrumb);
+            nf.ng.Bridge.get('appCtrl.serviceProvider.breadcrumbsCtrl').resetScrollPosition();
+
+            // update the timestamp
+            $('#stats-last-refreshed').text(processGroupFlow.lastRefreshed);
 
             // set the parent id if applicable
-            if (nf.Common.isDefinedAndNotNull(processGroup.parent)) {
-                nf.Canvas.setParentGroupId(processGroup.parent.id);
+            if (nf.Common.isDefinedAndNotNull(processGroupFlow.parentGroupId)) {
+                nf.Canvas.setParentGroupId(processGroupFlow.parentGroupId);
             } else {
                 nf.Canvas.setParentGroupId(null);
             }
 
-            // since we're getting a new group, we want to clear it
-            nf.Graph.removeAll();
-
             // refresh the graph
-            nf.Graph.add(processGroup.contents, false);
+            nf.Graph.set(processGroupFlow.flow, $.extend({
+                'selectAll': false
+            }, options));
 
-            // update the toolbar
-            nf.CanvasToolbar.refresh();
+            // update component visibility
+            nf.Canvas.View.updateVisibility();
+
+            // update the birdseye
+            nf.Birdseye.refresh();
+
+            // inform Angular app values have changed
+            nf.ng.Bridge.digest();
         }).fail(nf.Common.handleAjaxError);
-    };
-
-    /**
-     * Refreshes the status for the resources that exist in the specified process group.
-     * 
-     * @argument {string} processGroupId        The id of the process group
-     */
-    var reloadStatus = function (processGroupId) {
-        // get the stats
-        return  $.Deferred(function (deferred) {
-            $.ajax({
-                type: 'GET',
-                url: config.urls.controller + '/process-groups/' + encodeURIComponent(processGroupId) + '/status',
-                data: {
-                    recursive: false
-                },
-                dataType: 'json'
-            }).done(function (response) {
-                // report the updated stats
-                if (nf.Common.isDefinedAndNotNull(response.processGroupStatus)) {
-                    var processGroupStatus = response.processGroupStatus;
-
-                    // update all the stats
-                    nf.Graph.setStatus(processGroupStatus);
-
-                    // update the timestamp
-                    $('#stats-last-refreshed').text(processGroupStatus.statsLastRefreshed);
-                }
-                deferred.resolve();
-            }).fail(function (xhr, status, error) {
-                // if clustered, a 404 likely means the flow status at the ncm is stale
-                if (!nf.Canvas.isClustered() || xhr.status !== 404) {
-                    nf.Common.handleAjaxError(xhr, status, error);
-                    deferred.reject();
-                } else {
-                    deferred.resolve();
-                }
-            });
-        }).promise();
     };
 
     return {
@@ -880,72 +668,27 @@ nf.Canvas = (function () {
         },
 
         /**
-         * Stop polling for revision.
-         */
-        stopRevisionPolling: function () {
-            // set polling flag
-            revisionPolling = false;
-        },
-
-        /**
          * Remove the status poller.
          */
-        stopStatusPolling: function () {
+        stopPolling: function () {
             // set polling flag
-            statusPolling = false;
+            polling = false;
         },
 
         /**
          * Reloads the flow from the server based on the currently specified group id.
-         * To load another group, update nf.Canvas.setGroupId and call nf.Canvas.reload.
+         * To load another group, update nf.Canvas.setGroupId, clear the canvas, and call nf.Canvas.reload.
          */
-        reload: function () {
+        reload: function (options) {
             return $.Deferred(function (deferred) {
                 // hide the context menu
                 nf.ContextMenu.hide();
 
                 // get the process group to refresh everything
-                var processGroupXhr = reloadProcessGroup(nf.Canvas.getGroupId());
-                var statusXhr = reloadFlowStatus();
-                var settingsXhr = nf.Settings.loadSettings(false); // don't reload the status as we want to wait for deferreds to complete
-                $.when(processGroupXhr, statusXhr, settingsXhr).done(function (processGroupResult) {
-                    // adjust breadcrumbs if necessary
-                    var title = $('#data-flow-title-container');
-                    var titlePosition = title.position();
-                    var titleWidth = title.outerWidth();
-                    var titleRight = titlePosition.left + titleWidth;
-
-                    var padding = $('#breadcrumbs-right-border').width();
-                    var viewport = $('#data-flow-title-viewport');
-                    var viewportWidth = viewport.width();
-                    var viewportRight = viewportWidth - padding;
-
-                    // if the title's right is past the viewport's right, shift accordingly
-                    if (titleRight > viewportRight) {
-                        // adjust the position
-                        title.css('left', (titlePosition.left - (titleRight - viewportRight)) + 'px');
-                    } else {
-                        title.css('left', '10px');
-                    }
-
-                    // don't load the status until the graph is loaded
-                    reloadStatus(nf.Canvas.getGroupId()).done(function () {
-                        deferred.resolve(processGroupResult);
-                    }).fail(function () {
-                        deferred.reject();
-                    });
-                });
-            }).promise();
-        },
-
-        /**
-         * Reloads the status.
-         */
-        reloadStatus: function () {
-            return $.Deferred(function (deferred) {
-                // refresh the status and check any bulletins
-                $.when(reloadStatus(nf.Canvas.getGroupId()), reloadFlowStatus(), checkRevision()).done(function () {
-                    deferred.resolve();
+                var processGroupXhr = reloadProcessGroup(nf.Canvas.getGroupId(), options);
+                var statusXhr = nf.ng.Bridge.get('appCtrl.serviceProvider.headerCtrl.flowStatusCtrl').reloadFlowStatus();
+                $.when(processGroupXhr, statusXhr).done(function (processGroupResult) {
+                    deferred.resolve(processGroupResult);
                 }).fail(function () {
                     deferred.reject();
                 });
@@ -956,67 +699,85 @@ nf.Canvas = (function () {
          * Initialize NiFi.
          */
         init: function () {
-            // get the current user's identity
-            var identityXhr = $.ajax({
-                type: 'GET',
-                url: config.urls.identity,
-                dataType: 'json'
-            });
-
-            // get the current user's authorities
-            var authoritiesXhr = $.ajax({
-                type: 'GET',
-                url: config.urls.authorities,
-                dataType: 'json'
-            });
+            // attempt kerberos authentication
+            var ticketExchange = $.Deferred(function (deferred) {
+                if (nf.Storage.hasItem('jwt')) {
+                    deferred.resolve();
+                } else {
+                    $.ajax({
+                        type: 'POST',
+                        url: config.urls.kerberos,
+                        dataType: 'text'
+                    }).done(function (jwt) {
+                        // get the payload and store the token with the appropriate expiration
+                        var token = nf.Common.getJwtPayload(jwt);
+                        var expiration = parseInt(token['exp'], 10) * nf.Common.MILLIS_PER_SECOND;
+                        nf.Storage.setItem('jwt', jwt, expiration);
+                        deferred.resolve();
+                    }).fail(function () {
+                        deferred.reject();
+                    });
+                }
+            }).promise();
 
             // load the identity and authorities for the current user
             var userXhr = $.Deferred(function (deferred) {
-                $.when(authoritiesXhr, identityXhr).done(function (authoritiesResult, identityResult) {
-                    var authoritiesResponse = authoritiesResult[0];
-                    var identityResponse = identityResult[0];
+                ticketExchange.always(function () {
+                    // get the current user's identity
+                    var identityXhr = $.ajax({
+                        type: 'GET',
+                        url: config.urls.identity,
+                        dataType: 'json'
+                    });
 
-                    // set the user's authorities
-                    nf.Common.setAuthorities(authoritiesResponse.authorities);
+                    // get the current user's authorities
+                    var authoritiesXhr = $.ajax({
+                        type: 'GET',
+                        url: config.urls.authorities,
+                        dataType: 'json'
+                    });
 
-                    // at this point the user may be themselves or anonymous
+                    $.when(authoritiesXhr, identityXhr).done(function (authoritiesResult, identityResult) {
+                        var authoritiesResponse = authoritiesResult[0];
+                        var identityResponse = identityResult[0];
 
-                    // if the user is logged, we want to determine if they were logged in using a certificate
-                    if (identityResponse.identity !== 'anonymous') {
-                        // rendner the users name
-                        $('#current-user').text(identityResponse.identity).show();
+                        // set the user's authorities
+                        nf.Common.setAuthorities(authoritiesResponse.authorities);
 
-                        // render the logout button if there is a token locally
-                        if (nf.Storage.getItem('jwt') !== null) {
-                            $('#logout-link-container').show();
+                        // at this point the user may be themselves or anonymous
+
+                        // if the user is logged, we want to determine if they were logged in using a certificate
+                        if (identityResponse.identity !== 'anonymous') {
+                            // rendner the users name
+                            $('#current-user').text(identityResponse.identity).show();
+
+                            // render the logout button if there is a token locally
+                            if (nf.Storage.getItem('jwt') !== null) {
+                                $('#logout-link-container').show();
+                            }
+                        } else {
+                            // set the anonymous user label
+                            nf.Common.setAnonymousUserLabel();
                         }
-                    } else {
-                        // set the anonymous user label
-                        nf.Common.setAnonymousUserLabel();
-                    }
-                    deferred.resolve();
-                }).fail(function (xhr, status, error) {
-                    // there is no anonymous access and we don't know this user - open the login page which handles login/registration/etc
-                    if (xhr.status === 401 || xhr.status === 403) {
-                        window.location = '/nifi/login';
-                    } else {
-                        deferred.reject(xhr, status, error);
-                    }
+                        deferred.resolve();
+                    }).fail(function (xhr, status, error) {
+                        // there is no anonymous access and we don't know this user - open the login page which handles login/registration/etc
+                        if (xhr.status === 401 || xhr.status === 403) {
+                            window.location = '/nifi/login';
+                        } else {
+                            deferred.reject(xhr, status, error);
+                        }
+                    });
                 });
             }).promise();
-
             userXhr.done(function () {
+                // load the client id
+                var clientXhr = nf.Client.init();
+                
                 // get the controller config to register the status poller
                 var configXhr = $.ajax({
                     type: 'GET',
                     url: config.urls.controllerConfig,
-                    dataType: 'json'
-                });
-
-                // get the login config
-                var loginXhr = $.ajax({
-                    type: 'GET',
-                    url: config.urls.accessConfig,
                     dataType: 'json'
                 });
 
@@ -1039,9 +800,8 @@ nf.Canvas = (function () {
                 }).promise();
 
                 // ensure the config requests are loaded
-                $.when(configXhr, loginXhr, userXhr).done(function (configResult, loginResult) {
+                $.when(configXhr, userXhr, clientXhr).done(function (configResult, loginResult, aboutResult) {
                     var configResponse = configResult[0];
-                    var loginResponse = loginResult[0];
 
                     // calculate the canvas offset
                     var canvasContainer = $('#canvas-container');
@@ -1049,12 +809,6 @@ nf.Canvas = (function () {
 
                     // get the config details
                     var configDetails = configResponse.config;
-                    var loginDetails = loginResponse.config;
-
-                    // store the content viewer url if available
-                    if (!nf.Common.isBlank(configDetails.contentViewerUrl)) {
-                        $('#nifi-content-viewer-url').text(configDetails.contentViewerUrl);
-                    }
 
                     // when both request complete, load the application
                     isClusteredRequest.done(function () {
@@ -1064,66 +818,59 @@ nf.Canvas = (function () {
                         // initialize whether site to site is secure
                         secureSiteToSite = configDetails.siteToSiteSecure;
 
-                        // load d3
-                        loadD3().done(function () {
-                            nf.Storage.init();
+                        // init storage
+                        nf.Storage.init();
 
-                            // initialize the application
-                            initCanvas();
-                            nf.Canvas.View.init();
-                            nf.ContextMenu.init();
-                            nf.CanvasToolbar.init();
-                            nf.CanvasToolbox.init();
-                            nf.CanvasHeader.init(loginDetails.supportsLogin);
-                            nf.GraphControl.init();
-                            nf.Search.init();
-                            nf.Settings.init();
-                            nf.Actions.init();
-                            nf.QueueListing.init();
-                            nf.ComponentState.init();
+                        // initialize the application
+                        initCanvas();
+                        nf.Canvas.View.init();
+                        nf.ContextMenu.init();
+                        nf.ng.Bridge.get('appCtrl.serviceProvider.headerCtrl').init();
+                        nf.Settings.init();
+                        nf.Actions.init();
+                        nf.QueueListing.init();
+                        nf.ComponentState.init();
 
-                            // initialize the component behaviors
-                            nf.Draggable.init();
-                            nf.Selectable.init();
-                            nf.Connectable.init();
+                        // initialize the component behaviors
+                        nf.Draggable.init();
+                        nf.Selectable.init();
+                        nf.Connectable.init();
 
-                            // initialize the chart
-                            nf.StatusHistory.init(configDetails.timeOffset);
+                        // initialize the chart
+                        nf.StatusHistory.init(configDetails.timeOffset);
 
-                            // initialize the birdseye
-                            nf.Birdseye.init();
+                        // initialize the birdseye
+                        nf.Birdseye.init();
 
-                            // initialize components
-                            nf.ConnectionConfiguration.init();
-                            nf.ControllerService.init();
-                            nf.ReportingTask.init();
-                            nf.ProcessorConfiguration.init();
-                            nf.ProcessGroupConfiguration.init();
-                            nf.RemoteProcessGroupConfiguration.init();
-                            nf.RemoteProcessGroupPorts.init();
-                            nf.PortConfiguration.init();
-                            nf.SecurePortConfiguration.init();
-                            nf.LabelConfiguration.init();
-                            nf.ProcessorDetails.init();
-                            nf.ProcessGroupDetails.init();
-                            nf.PortDetails.init();
-                            nf.SecurePortDetails.init();
-                            nf.ConnectionDetails.init();
-                            nf.RemoteProcessGroupDetails.init();
-                            nf.GoTo.init();
-                            nf.Graph.init().done(function () {
-                                // determine the split between the polling
-                                var pollingSplit = autoRefreshIntervalSeconds / 2;
+                        // initialize components
+                        nf.ConnectionConfiguration.init();
+                        nf.ControllerService.init();
+                        nf.ReportingTask.init();
+                        nf.ProcessorConfiguration.init();
+                        nf.ProcessGroupConfiguration.init();
+                        nf.RemoteProcessGroupConfiguration.init();
+                        nf.RemoteProcessGroupPorts.init();
+                        nf.PortConfiguration.init();
+                        nf.LabelConfiguration.init();
+                        nf.ProcessorDetails.init();
+                        nf.ProcessGroupDetails.init();
+                        nf.PortDetails.init();
+                        nf.ConnectionDetails.init();
+                        nf.RemoteProcessGroupDetails.init();
+                        nf.GoTo.init();
+                        nf.Graph.init().done(function () {
+                            nf.ng.Bridge.get('appCtrl.serviceProvider.graphControlsCtrl').init();
 
-                                // register the revision and status polling
-                                startRevisionPolling(autoRefreshIntervalSeconds);
-                                setTimeout(function () {
-                                    startStatusPolling(autoRefreshIntervalSeconds);
-                                }, pollingSplit * 1000);
+                            // determine the split between the polling
+                            var pollingSplit = autoRefreshIntervalSeconds / 2;
 
-                                // hide the splash screen
-                                nf.Canvas.hideSplash();
-                            }).fail(nf.Common.handleAjaxError);
+                            // register the polling
+                            setTimeout(function () {
+                                startPolling(autoRefreshIntervalSeconds);
+                            }, pollingSplit * 1000);
+
+                            // hide the splash screen
+                            nf.Canvas.hideSplash();
                         }).fail(nf.Common.handleAjaxError);
                     }).fail(nf.Common.handleAjaxError);
                 }).fail(nf.Common.handleAjaxError);
@@ -1131,26 +878,8 @@ nf.Canvas = (function () {
         },
 
         /**
-         * Defines the gradient colors used to render processors.
-         * 
-         * @param {array} colors The colors
-         */
-        defineProcessorColors: function (colors) {
-            setColors(colors, 'processor');
-        },
-
-        /**
-         * Defines the gradient colors used to render label.
-         * 
-         * @param {array} colors The colors
-         */
-        defineLabelColors: function (colors) {
-            setColors(colors, 'label');
-        },
-
-        /**
          * Return whether this instance of NiFi is clustered.
-         * 
+         *
          * @returns {Boolean}
          */
         isClustered: function () {
@@ -1166,7 +895,7 @@ nf.Canvas = (function () {
 
         /**
          * Set the group id.
-         * 
+         *
          * @argument {string} gi       The group id
          */
         setGroupId: function (gi) {
@@ -1182,7 +911,7 @@ nf.Canvas = (function () {
 
         /**
          * Set the group name.
-         * 
+         *
          * @argument {string} gn     The group name
          */
         setGroupName: function (gn) {
@@ -1198,7 +927,7 @@ nf.Canvas = (function () {
 
         /**
          * Set the parent group id.
-         * 
+         *
          * @argument {string} pgi     The id of the parent group
          */
         setParentGroupId: function (pgi) {
@@ -1241,8 +970,8 @@ nf.Canvas = (function () {
                         return false;
                     }
 
-                    var left = d.component.position.x;
-                    var top = d.component.position.y;
+                    var left = d.position.x;
+                    var top = d.position.y;
                     var right = left + d.dimensions.width;
                     var bottom = top + d.dimensions.height;
 
@@ -1271,15 +1000,15 @@ nf.Canvas = (function () {
 
                 // marks the specific component as visible and determines if its entering or leaving visibility
                 var updateVisibility = function (d, isVisible) {
-                    var selection = d3.select('#id-' + d.component.id);
+                    var selection = d3.select('#id-' + d.id);
                     var visible = isVisible(d);
                     var wasVisible = selection.classed('visible');
 
                     // mark the selection as appropriate
                     selection.classed('visible', visible)
-                            .classed('entering', function () {
-                                return visible && !wasVisible;
-                            }).classed('leaving', function () {
+                        .classed('entering', function () {
+                            return visible && !wasVisible;
+                        }).classed('leaving', function () {
                         return !visible && wasVisible;
                     });
                 };
@@ -1315,55 +1044,55 @@ nf.Canvas = (function () {
 
                     // define the behavior
                     behavior = d3.behavior.zoom()
-                            .scaleExtent([MIN_SCALE, MAX_SCALE])
-                            .translate(TRANSLATE)
-                            .scale(SCALE)
-                            .on('zoomstart', function () {
-                                // hide the context menu
-                                nf.ContextMenu.hide();
-                            })
-                            .on('zoom', function () {
-                                // if we have zoomed, indicate that we are panning
-                                // to prevent deselection elsewhere
-                                if (zoomed) {
-                                    panning = true;
-                                } else {
-                                    zoomed = true;
-                                }
+                        .scaleExtent([MIN_SCALE, MAX_SCALE])
+                        .translate(TRANSLATE)
+                        .scale(SCALE)
+                        .on('zoomstart', function () {
+                            // hide the context menu
+                            nf.ContextMenu.hide();
+                        })
+                        .on('zoom', function () {
+                            // if we have zoomed, indicate that we are panning
+                            // to prevent deselection elsewhere
+                            if (zoomed) {
+                                panning = true;
+                            } else {
+                                zoomed = true;
+                            }
 
-                                // see if the scale has changed during this zoom event,
-                                // we want to only transition when zooming in/out as running
-                                // the transitions during pan events is 
-                                var transition = d3.event.sourceEvent.type === 'wheel' || d3.event.sourceEvent.type === 'mousewheel';
+                            // see if the scale has changed during this zoom event,
+                            // we want to only transition when zooming in/out as running
+                            // the transitions during pan events is
+                            var transition = d3.event.sourceEvent.type === 'wheel' || d3.event.sourceEvent.type === 'mousewheel';
 
-                                // refresh the canvas
-                                refreshed = nf.Canvas.View.refresh({
-                                    persist: false,
-                                    transition: transition,
-                                    refreshComponents: false,
-                                    refreshBirdseye: false
-                                });
-                            })
-                            .on('zoomend', function () {
-                                // ensure the canvas was actually refreshed
-                                if (nf.Common.isDefinedAndNotNull(refreshed)) {
-                                    nf.Canvas.View.updateVisibility();
-
-                                    // refresh the birdseye
-                                    refreshed.done(function () {
-                                        nf.Birdseye.refresh();
-                                    });
-
-                                    // persist the users view
-                                    nf.CanvasUtils.persistUserView();
-
-                                    // reset the refreshed deferred
-                                    refreshed = null;
-                                }
-
-                                panning = false;
-                                zoomed = false;
+                            // refresh the canvas
+                            refreshed = nf.Canvas.View.refresh({
+                                persist: false,
+                                transition: transition,
+                                refreshComponents: false,
+                                refreshBirdseye: false
                             });
+                        })
+                        .on('zoomend', function () {
+                            // ensure the canvas was actually refreshed
+                            if (nf.Common.isDefinedAndNotNull(refreshed)) {
+                                nf.Canvas.View.updateVisibility();
+
+                                // refresh the birdseye
+                                refreshed.done(function () {
+                                    nf.Birdseye.refresh();
+                                });
+
+                                // persist the users view
+                                nf.CanvasUtils.persistUserView();
+
+                                // reset the refreshed deferred
+                                refreshed = null;
+                            }
+
+                            panning = false;
+                            zoomed = false;
+                        });
 
                     // add the behavior to the canvas and disable dbl click zoom
                     svg.call(behavior).on('dblclick.zoom', null);
@@ -1371,7 +1100,7 @@ nf.Canvas = (function () {
 
                 /**
                  * Whether or not a component should be rendered based solely on the current scale.
-                 * 
+                 *
                  * @returns {Boolean}
                  */
                 shouldRenderPerScale: function () {
@@ -1388,7 +1117,7 @@ nf.Canvas = (function () {
 
                 /**
                  * Sets/gets the current translation.
-                 * 
+                 *
                  * @param {array} translate     [x, y]
                  */
                 translate: function (translate) {
@@ -1401,7 +1130,7 @@ nf.Canvas = (function () {
 
                 /**
                  * Sets/gets the current scale.
-                 * 
+                 *
                  * @param {number} scale        The new scale
                  */
                 scale: function (scale) {
@@ -1560,7 +1289,7 @@ nf.Canvas = (function () {
 
                 /**
                  * Refreshes the view based on the configured translation and scale.
-                 * 
+                 *
                  * @param {object} options Options for the refresh operation
                  */
                 refresh: function (options) {
@@ -1592,18 +1321,18 @@ nf.Canvas = (function () {
                         // update the canvas
                         if (transition === true) {
                             canvas.transition()
-                                    .duration(500)
-                                    .attr('transform', function () {
-                                        return 'translate(' + behavior.translate() + ') scale(' + behavior.scale() + ')';
-                                    })
-                                    .each('end', function () {
-                                        // refresh birdseye if appropriate
-                                        if (refreshBirdseye === true) {
-                                            nf.Birdseye.refresh();
-                                        }
+                                .duration(500)
+                                .attr('transform', function () {
+                                    return 'translate(' + behavior.translate() + ') scale(' + behavior.scale() + ')';
+                                })
+                                .each('end', function () {
+                                    // refresh birdseye if appropriate
+                                    if (refreshBirdseye === true) {
+                                        nf.Birdseye.refresh();
+                                    }
 
-                                        deferred.resolve();
-                                    });
+                                    deferred.resolve();
+                                });
                         } else {
                             canvas.attr('transform', function () {
                                 return 'translate(' + behavior.translate() + ') scale(' + behavior.scale() + ')';

@@ -30,50 +30,45 @@ nf.PortConfiguration = (function () {
                     buttonText: 'Apply',
                     handler: {
                         click: function () {
-                            var revision = nf.Client.getRevision();
-
                             // get the port data to reference the uri
                             var portId = $('#port-id').text();
                             var portData = d3.select('#id-' + portId).datum();
 
-                            var data = {
-                                version: revision.version,
-                                clientId: revision.clientId,
-                                name: $('#port-name').val(),
-                                comments: $('#port-comments').val()
+                            // build the updated port
+                            var port = {
+                                'id': portId,
+                                'name': $('#port-name').val(),
+                                'comments': $('#port-comments').val()
                             };
 
                             // include the concurrent tasks if appropriate
                             if ($('#port-concurrent-task-container').is(':visible')) {
-                                data['concurrentlySchedulableTaskCount'] = $('#port-concurrent-tasks').val();
+                                port['concurrentlySchedulableTaskCount'] = $('#port-concurrent-tasks').val();
                             }
 
                             // mark the processor disabled if appropriate
                             if ($('#port-enabled').hasClass('checkbox-unchecked')) {
-                                data['state'] = 'DISABLED';
+                                port['state'] = 'DISABLED';
                             } else if ($('#port-enabled').hasClass('checkbox-checked')) {
-                                data['state'] = 'STOPPED';
+                                port['state'] = 'STOPPED';
                             }
+                            
+                            // build the port entity
+                            var portEntity = {
+                                'revision': nf.Client.getRevision(portData),
+                                'component': port
+                            };
 
                             // update the selected component
                             $.ajax({
                                 type: 'PUT',
-                                data: data,
+                                data: JSON.stringify(portEntity),
                                 url: portData.component.uri,
-                                dataType: 'json'
+                                dataType: 'json',
+                                contentType: 'application/json'
                             }).done(function (response) {
-                                // update the revision
-                                nf.Client.setRevision(response.revision);
-
-                                var port;
-                                if (nf.Common.isDefinedAndNotNull(response.inputPort)) {
-                                    port = response.inputPort;
-                                } else {
-                                    port = response.outputPort;
-                                }
-
                                 // refresh the port component
-                                nf.Port.set(port);
+                                nf.Port.set(response);
 
                                 // close the details panel
                                 $('#port-configuration').modal('hide');
@@ -124,9 +119,6 @@ nf.PortConfiguration = (function () {
                     $('#port-comments').val('');
                 }
             }
-        }).draggable({
-            containment: 'parent',
-            handle: '.dialog-header'
         });
     };
 
@@ -159,7 +151,7 @@ nf.PortConfiguration = (function () {
                 }
 
                 // populate the port settings
-                $('#port-id').text(selectionData.component.id);
+                $('#port-id').text(selectionData.id);
                 $('#port-name').val(selectionData.component.name);
                 $('#port-enabled').removeClass('checkbox-unchecked checkbox-checked').addClass(portEnableStyle);
                 $('#port-concurrent-tasks').val(selectionData.component.concurrentlySchedulableTaskCount);

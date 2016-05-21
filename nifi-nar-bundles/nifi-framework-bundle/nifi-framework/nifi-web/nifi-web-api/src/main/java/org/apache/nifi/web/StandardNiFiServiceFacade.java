@@ -16,151 +16,7 @@
  */
 package org.apache.nifi.web;
 
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.nifi.action.Action;
-import org.apache.nifi.action.Component;
-import org.apache.nifi.action.FlowChangeAction;
-import org.apache.nifi.action.Operation;
-import org.apache.nifi.action.details.FlowChangePurgeDetails;
-import org.apache.nifi.admin.service.AccountNotFoundException;
-import org.apache.nifi.admin.service.AuditService;
-import org.apache.nifi.admin.service.UserService;
-import org.apache.nifi.authorization.Authority;
-import org.apache.nifi.cluster.HeartbeatPayload;
-import org.apache.nifi.cluster.context.ClusterContext;
-import org.apache.nifi.cluster.context.ClusterContextThreadLocal;
-import org.apache.nifi.cluster.manager.exception.IllegalClusterStateException;
-import org.apache.nifi.cluster.manager.exception.NoConnectedNodesException;
-import org.apache.nifi.cluster.manager.exception.UnknownNodeException;
-import org.apache.nifi.cluster.manager.impl.WebClusterManager;
-import org.apache.nifi.cluster.node.Node;
-import org.apache.nifi.cluster.protocol.NodeIdentifier;
-import org.apache.nifi.components.PropertyDescriptor;
-import org.apache.nifi.components.ValidationResult;
-import org.apache.nifi.components.Validator;
-import org.apache.nifi.components.state.Scope;
-import org.apache.nifi.components.state.StateMap;
-import org.apache.nifi.connectable.Connection;
-import org.apache.nifi.connectable.Funnel;
-import org.apache.nifi.connectable.Port;
-import org.apache.nifi.controller.Counter;
-import org.apache.nifi.controller.ProcessorNode;
-import org.apache.nifi.controller.ReportingTaskNode;
-import org.apache.nifi.controller.ScheduledState;
-import org.apache.nifi.controller.Snippet;
-import org.apache.nifi.controller.Template;
-import org.apache.nifi.controller.label.Label;
-import org.apache.nifi.controller.repository.claim.ContentDirection;
-import org.apache.nifi.controller.service.ControllerServiceNode;
-import org.apache.nifi.controller.service.ControllerServiceReference;
-import org.apache.nifi.controller.service.ControllerServiceState;
-import org.apache.nifi.controller.status.ConnectionStatus;
-import org.apache.nifi.controller.status.PortStatus;
-import org.apache.nifi.controller.status.ProcessGroupStatus;
-import org.apache.nifi.controller.status.ProcessorStatus;
-import org.apache.nifi.controller.status.RemoteProcessGroupStatus;
-import org.apache.nifi.diagnostics.SystemDiagnostics;
-import org.apache.nifi.groups.ProcessGroup;
-import org.apache.nifi.groups.ProcessGroupCounts;
-import org.apache.nifi.groups.RemoteProcessGroup;
-import org.apache.nifi.history.History;
-import org.apache.nifi.history.HistoryQuery;
-import org.apache.nifi.history.PreviousValue;
-import org.apache.nifi.remote.RemoteGroupPort;
-import org.apache.nifi.remote.RootGroupPort;
-import org.apache.nifi.reporting.Bulletin;
-import org.apache.nifi.reporting.BulletinQuery;
-import org.apache.nifi.reporting.BulletinRepository;
-import org.apache.nifi.reporting.ComponentType;
-import org.apache.nifi.user.AccountStatus;
-import org.apache.nifi.user.NiFiUser;
-import org.apache.nifi.user.NiFiUserGroup;
-import org.apache.nifi.util.FormatUtils;
-import org.apache.nifi.util.NiFiProperties;
-import org.apache.nifi.web.api.dto.BulletinBoardDTO;
-import org.apache.nifi.web.api.dto.BulletinDTO;
-import org.apache.nifi.web.api.dto.BulletinQueryDTO;
-import org.apache.nifi.web.api.dto.ClusterDTO;
-import org.apache.nifi.web.api.dto.ComponentHistoryDTO;
-import org.apache.nifi.web.api.dto.ComponentStateDTO;
-import org.apache.nifi.web.api.dto.ConnectionDTO;
-import org.apache.nifi.web.api.dto.ControllerConfigurationDTO;
-import org.apache.nifi.web.api.dto.ControllerDTO;
-import org.apache.nifi.web.api.dto.ControllerServiceDTO;
-import org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO;
-import org.apache.nifi.web.api.dto.CounterDTO;
-import org.apache.nifi.web.api.dto.CountersDTO;
-import org.apache.nifi.web.api.dto.DocumentedTypeDTO;
-import org.apache.nifi.web.api.dto.DropRequestDTO;
-import org.apache.nifi.web.api.dto.DtoFactory;
-import org.apache.nifi.web.api.dto.FlowFileDTO;
-import org.apache.nifi.web.api.dto.FlowSnippetDTO;
-import org.apache.nifi.web.api.dto.FunnelDTO;
-import org.apache.nifi.web.api.dto.LabelDTO;
-import org.apache.nifi.web.api.dto.ListingRequestDTO;
-import org.apache.nifi.web.api.dto.NodeDTO;
-import org.apache.nifi.web.api.dto.NodeSystemDiagnosticsDTO;
-import org.apache.nifi.web.api.dto.PortDTO;
-import org.apache.nifi.web.api.dto.PreviousValueDTO;
-import org.apache.nifi.web.api.dto.ProcessGroupDTO;
-import org.apache.nifi.web.api.dto.ProcessorConfigDTO;
-import org.apache.nifi.web.api.dto.ProcessorDTO;
-import org.apache.nifi.web.api.dto.PropertyDescriptorDTO;
-import org.apache.nifi.web.api.dto.PropertyHistoryDTO;
-import org.apache.nifi.web.api.dto.RemoteProcessGroupDTO;
-import org.apache.nifi.web.api.dto.RemoteProcessGroupPortDTO;
-import org.apache.nifi.web.api.dto.ReportingTaskDTO;
-import org.apache.nifi.web.api.dto.RevisionDTO;
-import org.apache.nifi.web.api.dto.SnippetDTO;
-import org.apache.nifi.web.api.dto.SystemDiagnosticsDTO;
-import org.apache.nifi.web.api.dto.TemplateDTO;
-import org.apache.nifi.web.api.dto.UserDTO;
-import org.apache.nifi.web.api.dto.UserGroupDTO;
-import org.apache.nifi.web.api.dto.action.ActionDTO;
-import org.apache.nifi.web.api.dto.action.HistoryDTO;
-import org.apache.nifi.web.api.dto.action.HistoryQueryDTO;
-import org.apache.nifi.web.api.dto.provenance.ProvenanceDTO;
-import org.apache.nifi.web.api.dto.provenance.ProvenanceEventDTO;
-import org.apache.nifi.web.api.dto.provenance.ProvenanceOptionsDTO;
-import org.apache.nifi.web.api.dto.provenance.lineage.LineageDTO;
-import org.apache.nifi.web.api.dto.search.SearchResultsDTO;
-import org.apache.nifi.web.api.dto.status.ClusterConnectionStatusDTO;
-import org.apache.nifi.web.api.dto.status.ClusterPortStatusDTO;
-import org.apache.nifi.web.api.dto.status.ClusterProcessGroupStatusDTO;
-import org.apache.nifi.web.api.dto.status.ClusterProcessorStatusDTO;
-import org.apache.nifi.web.api.dto.status.ClusterRemoteProcessGroupStatusDTO;
-import org.apache.nifi.web.api.dto.status.ClusterStatusDTO;
-import org.apache.nifi.web.api.dto.status.ClusterStatusHistoryDTO;
-import org.apache.nifi.web.api.dto.status.ControllerStatusDTO;
-import org.apache.nifi.web.api.dto.status.NodeConnectionStatusDTO;
-import org.apache.nifi.web.api.dto.status.NodePortStatusDTO;
-import org.apache.nifi.web.api.dto.status.NodeProcessGroupStatusDTO;
-import org.apache.nifi.web.api.dto.status.NodeProcessorStatusDTO;
-import org.apache.nifi.web.api.dto.status.NodeRemoteProcessGroupStatusDTO;
-import org.apache.nifi.web.api.dto.status.NodeStatusDTO;
-import org.apache.nifi.web.api.dto.status.ProcessGroupStatusDTO;
-import org.apache.nifi.web.api.dto.status.StatusHistoryDTO;
-import org.apache.nifi.web.controller.ControllerFacade;
-import org.apache.nifi.web.dao.ConnectionDAO;
-import org.apache.nifi.web.dao.ControllerServiceDAO;
-import org.apache.nifi.web.dao.FunnelDAO;
-import org.apache.nifi.web.dao.LabelDAO;
-import org.apache.nifi.web.dao.PortDAO;
-import org.apache.nifi.web.dao.ProcessGroupDAO;
-import org.apache.nifi.web.dao.ProcessorDAO;
-import org.apache.nifi.web.dao.RemoteProcessGroupDAO;
-import org.apache.nifi.web.dao.ReportingTaskDAO;
-import org.apache.nifi.web.dao.SnippetDAO;
-import org.apache.nifi.web.dao.TemplateDAO;
-import org.apache.nifi.web.security.user.NewAccountRequest;
-import org.apache.nifi.web.security.user.NiFiUserUtils;
-import org.apache.nifi.web.util.SnippetUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.security.access.AccessDeniedException;
-
-import javax.ws.rs.WebApplicationException;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -173,24 +29,180 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
+import javax.ws.rs.WebApplicationException;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.nifi.action.Action;
+import org.apache.nifi.action.Component;
+import org.apache.nifi.action.FlowChangeAction;
+import org.apache.nifi.action.Operation;
+import org.apache.nifi.action.details.FlowChangePurgeDetails;
+import org.apache.nifi.admin.service.AuditService;
+import org.apache.nifi.admin.service.KeyService;
+import org.apache.nifi.authorization.Authorizer;
+import org.apache.nifi.authorization.RequestAction;
+import org.apache.nifi.authorization.Resource;
+import org.apache.nifi.authorization.resource.Authorizable;
+import org.apache.nifi.authorization.user.NiFiUser;
+import org.apache.nifi.authorization.user.NiFiUserUtils;
+import org.apache.nifi.cluster.coordination.heartbeat.NodeHeartbeat;
+import org.apache.nifi.cluster.manager.exception.UnknownNodeException;
+import org.apache.nifi.cluster.manager.impl.WebClusterManager;
+import org.apache.nifi.cluster.node.Node;
+import org.apache.nifi.cluster.protocol.NodeIdentifier;
+import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.components.ValidationResult;
+import org.apache.nifi.components.Validator;
+import org.apache.nifi.components.state.Scope;
+import org.apache.nifi.components.state.StateMap;
+import org.apache.nifi.connectable.Connectable;
+import org.apache.nifi.connectable.Connection;
+import org.apache.nifi.connectable.Funnel;
+import org.apache.nifi.connectable.Port;
+import org.apache.nifi.controller.ConfiguredComponent;
+import org.apache.nifi.controller.Counter;
+import org.apache.nifi.controller.ProcessorNode;
+import org.apache.nifi.controller.ReportingTaskNode;
+import org.apache.nifi.controller.ScheduledState;
+import org.apache.nifi.controller.Snippet;
+import org.apache.nifi.controller.Template;
+import org.apache.nifi.controller.label.Label;
+import org.apache.nifi.controller.repository.claim.ContentDirection;
+import org.apache.nifi.controller.service.ControllerServiceNode;
+import org.apache.nifi.controller.service.ControllerServiceReference;
+import org.apache.nifi.controller.service.ControllerServiceState;
+import org.apache.nifi.controller.status.ProcessGroupStatus;
+import org.apache.nifi.diagnostics.SystemDiagnostics;
+import org.apache.nifi.groups.ProcessGroup;
+import org.apache.nifi.groups.ProcessGroupCounts;
+import org.apache.nifi.groups.RemoteProcessGroup;
+import org.apache.nifi.history.History;
+import org.apache.nifi.history.HistoryQuery;
+import org.apache.nifi.history.PreviousValue;
+import org.apache.nifi.remote.RootGroupPort;
+import org.apache.nifi.reporting.Bulletin;
+import org.apache.nifi.reporting.BulletinQuery;
+import org.apache.nifi.reporting.BulletinRepository;
+import org.apache.nifi.util.FormatUtils;
+import org.apache.nifi.util.NiFiProperties;
+import org.apache.nifi.web.api.dto.AccessPolicyDTO;
+import org.apache.nifi.web.api.dto.BulletinBoardDTO;
+import org.apache.nifi.web.api.dto.BulletinDTO;
+import org.apache.nifi.web.api.dto.BulletinQueryDTO;
+import org.apache.nifi.web.api.dto.ClusterDTO;
+import org.apache.nifi.web.api.dto.ComponentDTO;
+import org.apache.nifi.web.api.dto.ComponentHistoryDTO;
+import org.apache.nifi.web.api.dto.ComponentStateDTO;
+import org.apache.nifi.web.api.dto.ConnectionDTO;
+import org.apache.nifi.web.api.dto.ControllerConfigurationDTO;
+import org.apache.nifi.web.api.dto.ControllerDTO;
+import org.apache.nifi.web.api.dto.ControllerServiceDTO;
+import org.apache.nifi.web.api.dto.ControllerServiceReferencingComponentDTO;
+import org.apache.nifi.web.api.dto.CounterDTO;
+import org.apache.nifi.web.api.dto.CountersDTO;
+import org.apache.nifi.web.api.dto.CountersSnapshotDTO;
+import org.apache.nifi.web.api.dto.DocumentedTypeDTO;
+import org.apache.nifi.web.api.dto.DropRequestDTO;
+import org.apache.nifi.web.api.dto.DtoFactory;
+import org.apache.nifi.web.api.dto.EntityFactory;
+import org.apache.nifi.web.api.dto.FlowFileDTO;
+import org.apache.nifi.web.api.dto.FlowSnippetDTO;
+import org.apache.nifi.web.api.dto.FunnelDTO;
+import org.apache.nifi.web.api.dto.LabelDTO;
+import org.apache.nifi.web.api.dto.ListingRequestDTO;
+import org.apache.nifi.web.api.dto.NodeDTO;
+import org.apache.nifi.web.api.dto.PortDTO;
+import org.apache.nifi.web.api.dto.PreviousValueDTO;
+import org.apache.nifi.web.api.dto.ProcessGroupDTO;
+import org.apache.nifi.web.api.dto.ProcessorConfigDTO;
+import org.apache.nifi.web.api.dto.ProcessorDTO;
+import org.apache.nifi.web.api.dto.PropertyDescriptorDTO;
+import org.apache.nifi.web.api.dto.PropertyHistoryDTO;
+import org.apache.nifi.web.api.dto.RemoteProcessGroupDTO;
+import org.apache.nifi.web.api.dto.RemoteProcessGroupPortDTO;
+import org.apache.nifi.web.api.dto.ReportingTaskDTO;
+import org.apache.nifi.web.api.dto.ResourceDTO;
+import org.apache.nifi.web.api.dto.RevisionDTO;
+import org.apache.nifi.web.api.dto.SnippetDTO;
+import org.apache.nifi.web.api.dto.SystemDiagnosticsDTO;
+import org.apache.nifi.web.api.dto.TemplateDTO;
+import org.apache.nifi.web.api.dto.action.ActionDTO;
+import org.apache.nifi.web.api.dto.action.HistoryDTO;
+import org.apache.nifi.web.api.dto.action.HistoryQueryDTO;
+import org.apache.nifi.web.api.dto.flow.FlowDTO;
+import org.apache.nifi.web.api.dto.flow.ProcessGroupFlowDTO;
+import org.apache.nifi.web.api.dto.provenance.ProvenanceDTO;
+import org.apache.nifi.web.api.dto.provenance.ProvenanceEventDTO;
+import org.apache.nifi.web.api.dto.provenance.ProvenanceOptionsDTO;
+import org.apache.nifi.web.api.dto.provenance.lineage.LineageDTO;
+import org.apache.nifi.web.api.dto.search.SearchResultsDTO;
+import org.apache.nifi.web.api.dto.status.ConnectionStatusDTO;
+import org.apache.nifi.web.api.dto.status.ControllerStatusDTO;
+import org.apache.nifi.web.api.dto.status.PortStatusDTO;
+import org.apache.nifi.web.api.dto.status.ProcessGroupStatusDTO;
+import org.apache.nifi.web.api.dto.status.ProcessorStatusDTO;
+import org.apache.nifi.web.api.dto.status.RemoteProcessGroupStatusDTO;
+import org.apache.nifi.web.api.dto.status.StatusHistoryDTO;
+import org.apache.nifi.web.api.entity.ConnectionEntity;
+import org.apache.nifi.web.api.entity.ControllerServiceEntity;
+import org.apache.nifi.web.api.entity.ControllerServiceReferencingComponentEntity;
+import org.apache.nifi.web.api.entity.ControllerServiceReferencingComponentsEntity;
+import org.apache.nifi.web.api.entity.FlowEntity;
+import org.apache.nifi.web.api.entity.FunnelEntity;
+import org.apache.nifi.web.api.entity.LabelEntity;
+import org.apache.nifi.web.api.entity.PortEntity;
+import org.apache.nifi.web.api.entity.ProcessGroupEntity;
+import org.apache.nifi.web.api.entity.ProcessorEntity;
+import org.apache.nifi.web.api.entity.RemoteProcessGroupEntity;
+import org.apache.nifi.web.api.entity.RemoteProcessGroupPortEntity;
+import org.apache.nifi.web.api.entity.ReportingTaskEntity;
+import org.apache.nifi.web.api.entity.SnippetEntity;
+import org.apache.nifi.web.controller.ControllerFacade;
+import org.apache.nifi.web.dao.ConnectionDAO;
+import org.apache.nifi.web.dao.ControllerServiceDAO;
+import org.apache.nifi.web.dao.FunnelDAO;
+import org.apache.nifi.web.dao.LabelDAO;
+import org.apache.nifi.web.dao.PortDAO;
+import org.apache.nifi.web.dao.ProcessGroupDAO;
+import org.apache.nifi.web.dao.ProcessorDAO;
+import org.apache.nifi.web.dao.RemoteProcessGroupDAO;
+import org.apache.nifi.web.dao.ReportingTaskDAO;
+import org.apache.nifi.web.dao.SnippetDAO;
+import org.apache.nifi.web.dao.TemplateDAO;
+import org.apache.nifi.web.revision.DeleteRevisionTask;
+import org.apache.nifi.web.revision.ExpiredRevisionClaimException;
+import org.apache.nifi.web.revision.ReadOnlyRevisionCallback;
+import org.apache.nifi.web.revision.RevisionClaim;
+import org.apache.nifi.web.revision.RevisionManager;
+import org.apache.nifi.web.revision.RevisionUpdate;
+import org.apache.nifi.web.revision.StandardRevisionClaim;
+import org.apache.nifi.web.revision.StandardRevisionUpdate;
+import org.apache.nifi.web.revision.UpdateRevisionTask;
+import org.apache.nifi.web.util.SnippetUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of NiFiServiceFacade that performs revision checking.
  */
 public class StandardNiFiServiceFacade implements NiFiServiceFacade {
-
     private static final Logger logger = LoggerFactory.getLogger(StandardNiFiServiceFacade.class);
 
     // nifi core components
     private ControllerFacade controllerFacade;
     private SnippetUtils snippetUtils;
 
-    // optimistic locking manager
-    private OptimisticLockingManager optimisticLockingManager;
+    // revision manager
+    private RevisionManager revisionManager;
 
     // data access objects
     private ProcessorDAO processorDAO;
@@ -208,7 +220,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
 
     // administrative services
     private AuditService auditService;
-    private UserService userService;
+    private KeyService keyService;
 
     // cluster manager
     private WebClusterManager clusterManager;
@@ -216,14 +228,25 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     // properties
     private NiFiProperties properties;
     private DtoFactory dtoFactory;
+    private EntityFactory entityFactory;
+
+    private Authorizer authorizer;
+
+    // -----------------------------------------
+    // Synchronization methods
+    // -----------------------------------------
+    @Override
+    public void claimRevision(Revision revision) {
+        revisionManager.requestClaim(revision, NiFiUserUtils.getNiFiUser());
+    }
 
     // -----------------------------------------
     // Verification Operations
     // -----------------------------------------
 
     @Override
-    public void verifyListQueue(String groupId, String connectionId) {
-        connectionDAO.verifyList(groupId, connectionId);
+    public void verifyListQueue(String connectionId) {
+        connectionDAO.verifyList(connectionId);
     }
 
     @Override
@@ -232,85 +255,99 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public void verifyUpdateConnection(String groupId, ConnectionDTO connectionDTO) {
-        // if connection does not exist, then the update request is likely creating it
-        // so we don't verify since it will fail
-        if (connectionDAO.hasConnection(groupId, connectionDTO.getId())) {
-            connectionDAO.verifyUpdate(groupId, connectionDTO);
-        } else {
-            connectionDAO.verifyCreate(groupId, connectionDTO);
+    public void verifyUpdateConnection(ConnectionDTO connectionDTO) {
+        try {
+            // if connection does not exist, then the update request is likely creating it
+            // so we don't verify since it will fail
+            if (connectionDAO.hasConnection(connectionDTO.getId())) {
+                connectionDAO.verifyUpdate(connectionDTO);
+            } else {
+                connectionDAO.verifyCreate(connectionDTO.getParentGroupId(), connectionDTO);
+            }
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(connectionDTO.getId());
+            throw e;
         }
     }
 
     @Override
-    public void verifyDeleteConnection(String groupId, String connectionId) {
-        connectionDAO.verifyDelete(groupId, connectionId);
+    public void verifyDeleteConnection(String connectionId) {
+        connectionDAO.verifyDelete(connectionId);
     }
 
     @Override
-    public void verifyDeleteFunnel(String groupId, String funnelId) {
-        funnelDAO.verifyDelete(groupId, funnelId);
+    public void verifyDeleteFunnel(String funnelId) {
+        funnelDAO.verifyDelete(funnelId);
     }
 
     @Override
-    public void verifyUpdateInputPort(String groupId, PortDTO inputPortDTO) {
-        // if connection does not exist, then the update request is likely creating it
-        // so we don't verify since it will fail
-        if (inputPortDAO.hasPort(groupId, inputPortDTO.getId())) {
-            inputPortDAO.verifyUpdate(groupId, inputPortDTO);
+    public void verifyUpdateInputPort(PortDTO inputPortDTO) {
+        try {
+            // if connection does not exist, then the update request is likely creating it
+            // so we don't verify since it will fail
+            if (inputPortDAO.hasPort(inputPortDTO.getId())) {
+                inputPortDAO.verifyUpdate(inputPortDTO);
+            }
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(inputPortDTO.getId());
+            throw e;
         }
     }
 
     @Override
-    public void verifyDeleteInputPort(String groupId, String inputPortId) {
-        inputPortDAO.verifyDelete(groupId, inputPortId);
+    public void verifyDeleteInputPort(String inputPortId) {
+        inputPortDAO.verifyDelete(inputPortId);
     }
 
     @Override
-    public void verifyUpdateOutputPort(String groupId, PortDTO outputPortDTO) {
-        // if connection does not exist, then the update request is likely creating it
-        // so we don't verify since it will fail
-        if (outputPortDAO.hasPort(groupId, outputPortDTO.getId())) {
-            outputPortDAO.verifyUpdate(groupId, outputPortDTO);
+    public void verifyUpdateOutputPort(PortDTO outputPortDTO) {
+        try {
+            // if connection does not exist, then the update request is likely creating it
+            // so we don't verify since it will fail
+            if (outputPortDAO.hasPort(outputPortDTO.getId())) {
+                outputPortDAO.verifyUpdate(outputPortDTO);
+            }
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(outputPortDTO.getId());
+            throw e;
         }
     }
 
     @Override
-    public void verifyDeleteOutputPort(String groupId, String outputPortId) {
-        outputPortDAO.verifyDelete(groupId, outputPortId);
+    public void verifyDeleteOutputPort(String outputPortId) {
+        outputPortDAO.verifyDelete(outputPortId);
     }
 
     @Override
     public void verifyUpdateProcessor(ProcessorDTO processorDTO) {
-        final String groupId = controllerFacade.findProcessGroupIdForProcessor(processorDTO.getId());
-
-        // if processor does not exist, then the update request is likely creating it
-        // so we don't verify since it will fail
-        if (groupId != null) {
-            verifyUpdateProcessor(groupId, processorDTO);
+        try {
+            // if group does not exist, then the update request is likely creating it
+            // so we don't verify since it will fail
+            if (processorDAO.hasProcessor(processorDTO.getId())) {
+                processorDAO.verifyUpdate(processorDTO);
+            }
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(processorDTO.getId());
+            throw e;
         }
     }
 
     @Override
-    public void verifyUpdateProcessor(String groupId, ProcessorDTO processorDTO) {
-        // if processor does not exist, then the update request is likely creating it
-        // so we don't verify since it will fail
-        if (processorDAO.hasProcessor(groupId, processorDTO.getId())) {
-            processorDAO.verifyUpdate(groupId, processorDTO);
-        }
-    }
-
-    @Override
-    public void verifyDeleteProcessor(String groupId, String processorId) {
-        processorDAO.verifyDelete(groupId, processorId);
+    public void verifyDeleteProcessor(String processorId) {
+        processorDAO.verifyDelete(processorId);
     }
 
     @Override
     public void verifyUpdateProcessGroup(ProcessGroupDTO processGroupDTO) {
-        // if group does not exist, then the update request is likely creating it
-        // so we don't verify since it will fail
-        if (processGroupDAO.hasProcessGroup(processGroupDTO.getId())) {
-            processGroupDAO.verifyUpdate(processGroupDTO);
+        try {
+            // if group does not exist, then the update request is likely creating it
+            // so we don't verify since it will fail
+            if (processGroupDAO.hasProcessGroup(processGroupDTO.getId())) {
+                processGroupDAO.verifyUpdate(processGroupDTO);
+            }
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(processGroupDTO.getId());
+            throw e;
         }
     }
 
@@ -320,41 +357,66 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public void verifyUpdateRemoteProcessGroup(String groupId, RemoteProcessGroupDTO remoteProcessGroupDTO) {
-        // if remote group does not exist, then the update request is likely creating it
-        // so we don't verify since it will fail
-        if (remoteProcessGroupDAO.hasRemoteProcessGroup(groupId, remoteProcessGroupDTO.getId())) {
-            remoteProcessGroupDAO.verifyUpdate(groupId, remoteProcessGroupDTO);
+    public void verifyUpdateRemoteProcessGroup(RemoteProcessGroupDTO remoteProcessGroupDTO) {
+        try {
+            // if remote group does not exist, then the update request is likely creating it
+            // so we don't verify since it will fail
+            if (remoteProcessGroupDAO.hasRemoteProcessGroup(remoteProcessGroupDTO.getId())) {
+                remoteProcessGroupDAO.verifyUpdate(remoteProcessGroupDTO);
+            }
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(remoteProcessGroupDTO.getId());
+            throw e;
         }
     }
 
     @Override
-    public void verifyUpdateRemoteProcessGroupInputPort(String groupId, String remoteProcessGroupId, RemoteProcessGroupPortDTO remoteProcessGroupPortDTO) {
-        remoteProcessGroupDAO.verifyUpdateInputPort(groupId, remoteProcessGroupId, remoteProcessGroupPortDTO);
+    public void verifyUpdateRemoteProcessGroupInputPort(String remoteProcessGroupId, RemoteProcessGroupPortDTO remoteProcessGroupPortDTO) {
+        try {
+            remoteProcessGroupDAO.verifyUpdateInputPort(remoteProcessGroupId, remoteProcessGroupPortDTO);
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(remoteProcessGroupId);
+            throw e;
+        }
     }
 
     @Override
-    public void verifyUpdateRemoteProcessGroupOutputPort(String groupId, String remoteProcessGroupId, RemoteProcessGroupPortDTO remoteProcessGroupPortDTO) {
-        remoteProcessGroupDAO.verifyUpdateOutputPort(groupId, remoteProcessGroupId, remoteProcessGroupPortDTO);
+    public void verifyUpdateRemoteProcessGroupOutputPort(String remoteProcessGroupId, RemoteProcessGroupPortDTO remoteProcessGroupPortDTO) {
+        try {
+            remoteProcessGroupDAO.verifyUpdateOutputPort(remoteProcessGroupId, remoteProcessGroupPortDTO);
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(remoteProcessGroupId);
+            throw e;
+        }
     }
 
     @Override
-    public void verifyDeleteRemoteProcessGroup(String groupId, String remoteProcessGroupId) {
-        remoteProcessGroupDAO.verifyDelete(groupId, remoteProcessGroupId);
+    public void verifyDeleteRemoteProcessGroup(String remoteProcessGroupId) {
+        remoteProcessGroupDAO.verifyDelete(remoteProcessGroupId);
     }
 
     @Override
     public void verifyUpdateControllerService(ControllerServiceDTO controllerServiceDTO) {
-        // if service does not exist, then the update request is likely creating it
-        // so we don't verify since it will fail
-        if (controllerServiceDAO.hasControllerService(controllerServiceDTO.getId())) {
-            controllerServiceDAO.verifyUpdate(controllerServiceDTO);
+        try {
+            // if service does not exist, then the update request is likely creating it
+            // so we don't verify since it will fail
+            if (controllerServiceDAO.hasControllerService(controllerServiceDTO.getId())) {
+                controllerServiceDAO.verifyUpdate(controllerServiceDTO);
+            }
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(controllerServiceDTO.getId());
+            throw e;
         }
     }
 
     @Override
     public void verifyUpdateControllerServiceReferencingComponents(String controllerServiceId, ScheduledState scheduledState, ControllerServiceState controllerServiceState) {
-        controllerServiceDAO.verifyUpdateReferencingComponents(controllerServiceId, scheduledState, controllerServiceState);
+        try {
+            controllerServiceDAO.verifyUpdateReferencingComponents(controllerServiceId, scheduledState, controllerServiceState);
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(controllerServiceId);
+            throw e;
+        }
     }
 
     @Override
@@ -364,10 +426,15 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
 
     @Override
     public void verifyUpdateReportingTask(ReportingTaskDTO reportingTaskDTO) {
-        // if tasks does not exist, then the update request is likely creating it
-        // so we don't verify since it will fail
-        if (reportingTaskDAO.hasReportingTask(reportingTaskDTO.getId())) {
-            reportingTaskDAO.verifyUpdate(reportingTaskDTO);
+        try {
+            // if tasks does not exist, then the update request is likely creating it
+            // so we don't verify since it will fail
+            if (reportingTaskDAO.hasReportingTask(reportingTaskDTO.getId())) {
+                reportingTaskDAO.verifyUpdate(reportingTaskDTO);
+            }
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(reportingTaskDTO.getId());
+            throw e;
         }
     }
 
@@ -380,390 +447,425 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     // Write Operations
     // -----------------------------------------
     @Override
-    public ConfigurationSnapshot<ConnectionDTO> updateConnection(final Revision revision, final String groupId, final ConnectionDTO connectionDTO) {
+    public UpdateResult<ConnectionEntity> updateConnection(final Revision revision, final ConnectionDTO connectionDTO) {
         // if connection does not exist, then create new connection
-        if (connectionDAO.hasConnection(groupId, connectionDTO.getId()) == false) {
-            return createConnection(revision, groupId, connectionDTO);
+        if (connectionDAO.hasConnection(connectionDTO.getId()) == false) {
+            return new UpdateResult<>(createConnection(connectionDTO.getParentGroupId(), connectionDTO), true);
         }
 
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ConnectionDTO>() {
-            @Override
-            public ConfigurationResult<ConnectionDTO> execute() {
-                final Connection connection = connectionDAO.updateConnection(groupId, connectionDTO);
+        final Connection connectionNode = connectionDAO.getConnection(connectionDTO.getId());
 
-                controllerFacade.save();
+        final RevisionUpdate<ConnectionDTO> snapshot = updateComponent(
+            revision,
+            connectionNode,
+            () -> connectionDAO.updateConnection(connectionDTO),
+            connection -> dtoFactory.createConnectionDto(connection));
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ConnectionDTO getConfiguration() {
-                        return dtoFactory.createConnectionDto(connection);
-                    }
-                };
-            }
-        });
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(connectionNode);
+        final ConnectionStatusDTO status = dtoFactory.createConnectionStatusDto(controllerFacade.getConnectionStatus(connectionNode.getIdentifier()));
+        return new UpdateResult<>(entityFactory.createConnectionEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy, status), false);
     }
 
     @Override
-    public ConfigurationSnapshot<ProcessorDTO> updateProcessor(final Revision revision, final String groupId, final ProcessorDTO processorDTO) {
+    public UpdateResult<ProcessorEntity> updateProcessor(final Revision revision, final ProcessorDTO processorDTO) {
         // if processor does not exist, then create new processor
-        if (processorDAO.hasProcessor(groupId, processorDTO.getId()) == false) {
-            return createProcessor(revision, groupId, processorDTO);
+        if (processorDAO.hasProcessor(processorDTO.getId()) == false) {
+            return new UpdateResult<>(createProcessor(processorDTO.getParentGroupId(), processorDTO), true);
         }
 
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ProcessorDTO>() {
-            @Override
-            public ConfigurationResult<ProcessorDTO> execute() {
-                // update the processor
-                final ProcessorNode processor = processorDAO.updateProcessor(groupId, processorDTO);
+        // get the component, ensure we have access to it, and perform the update request
+        final ProcessorNode processorNode = processorDAO.getProcessor(processorDTO.getId());
+        final RevisionUpdate<ProcessorDTO> snapshot = updateComponent(revision,
+            processorNode,
+            () -> processorDAO.updateProcessor(processorDTO),
+            proc -> dtoFactory.createProcessorDto(proc));
 
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ProcessorDTO getConfiguration() {
-                        return dtoFactory.createProcessorDto(processor);
-                    }
-                };
-            }
-        });
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(processorNode);
+        final ProcessorStatusDTO status = dtoFactory.createProcessorStatusDto(controllerFacade.getProcessorStatus(processorNode.getIdentifier()));
+        return new UpdateResult<>(entityFactory.createProcessorEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy, status), false);
     }
 
     @Override
-    public ConfigurationSnapshot<LabelDTO> updateLabel(final Revision revision, final String groupId, final LabelDTO labelDTO) {
+    public UpdateResult<LabelEntity> updateLabel(final Revision revision, final LabelDTO labelDTO) {
         // if label does not exist, then create new label
-        if (labelDAO.hasLabel(groupId, labelDTO.getId()) == false) {
-            return createLabel(revision, groupId, labelDTO);
+        if (labelDAO.hasLabel(labelDTO.getId()) == false) {
+            return new UpdateResult<>(createLabel(labelDTO.getParentGroupId(), labelDTO), false);
         }
 
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<LabelDTO>() {
-            @Override
-            public ConfigurationResult<LabelDTO> execute() {
-                // update the existing label
-                final Label label = labelDAO.updateLabel(groupId, labelDTO);
+        final Label labelNode = labelDAO.getLabel(labelDTO.getId());
+        final RevisionUpdate<LabelDTO> snapshot = updateComponent(revision,
+            labelNode,
+            () -> labelDAO.updateLabel(labelDTO),
+            label -> dtoFactory.createLabelDto(label));
 
-                // save updated controller
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public LabelDTO getConfiguration() {
-                        return dtoFactory.createLabelDto(label);
-                    }
-                };
-            }
-        });
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(labelNode);
+        return new UpdateResult<>(entityFactory.createLabelEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy), false);
     }
 
     @Override
-    public ConfigurationSnapshot<FunnelDTO> updateFunnel(final Revision revision, final String groupId, final FunnelDTO funnelDTO) {
+    public UpdateResult<FunnelEntity> updateFunnel(final Revision revision, final FunnelDTO funnelDTO) {
         // if label does not exist, then create new label
-        if (funnelDAO.hasFunnel(groupId, funnelDTO.getId()) == false) {
-            return createFunnel(revision, groupId, funnelDTO);
+        if (funnelDAO.hasFunnel(funnelDTO.getId()) == false) {
+            return new UpdateResult<>(createFunnel(funnelDTO.getParentGroupId(), funnelDTO), true);
         }
 
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<FunnelDTO>() {
-            @Override
-            public ConfigurationResult<FunnelDTO> execute() {
-                // update the existing label
-                final Funnel funnel = funnelDAO.updateFunnel(groupId, funnelDTO);
+        final Funnel funnelNode = funnelDAO.getFunnel(funnelDTO.getId());
+        final RevisionUpdate<FunnelDTO> snapshot = updateComponent(revision,
+            funnelNode,
+            () -> funnelDAO.updateFunnel(funnelDTO),
+            funnel -> dtoFactory.createFunnelDto(funnel));
 
-                // save updated controller
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public FunnelDTO getConfiguration() {
-                        return dtoFactory.createFunnelDto(funnel);
-                    }
-                };
-            }
-        });
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(funnelNode);
+        return new UpdateResult<>(entityFactory.createFunnelEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy), false);
     }
+
+
+    /**
+     * Updates a component with the given revision, using the provided supplier to call
+     * into the appropriate DAO and the provided function to convert the component into a DTO.
+     *
+     * @param revision the current revision
+     * @param daoUpdate a Supplier that will update the component via the appropriate DAO
+     * @param dtoCreation a Function to convert a component into a dao
+     *
+     * @param <D> the DTO Type of the updated component
+     * @param <C> the Component Type of the updated component
+     *
+     * @return A ConfigurationSnapshot that represents the new configuration
+     */
+    private <D, C> RevisionUpdate<D> updateComponent(final Revision revision, final Authorizable authorizable, final Supplier<C> daoUpdate, final Function<C, D> dtoCreation) {
+        final NiFiUser user = NiFiUserUtils.getNiFiUser();
+        final String modifier = user.getUserName();
+        try {
+            final RevisionUpdate<D> updatedComponent = revisionManager.updateRevision(new StandardRevisionClaim(revision), user, new UpdateRevisionTask<D>() {
+                @Override
+                public RevisionUpdate<D> update() {
+                    // ensure write access to the flow
+                    authorizable.authorize(authorizer, RequestAction.WRITE);
+
+                    // also ensure read access to the flow as the component must be read in order to generate a response
+                    authorizable.authorize(authorizer, RequestAction.READ);
+
+                    // get the updated component
+                    final C component = daoUpdate.get();
+
+                    // save updated controller
+                    controllerFacade.save();
+
+                    final Revision updatedRevision = incrementRevision(revision);
+                    final D dto = dtoCreation.apply(component);
+
+                    final FlowModification lastModification = new FlowModification(updatedRevision, modifier);
+                    return new StandardRevisionUpdate<>(dto, lastModification);
+                }
+            });
+
+            return updatedComponent;
+        } catch (final ExpiredRevisionClaimException erce) {
+            throw new InvalidRevisionException("Failed to update component " + authorizable, erce);
+        }
+    }
+
 
     @Override
     public void verifyUpdateSnippet(SnippetDTO snippetDto) {
-        // if snippet does not exist, then the update request is likely creating it
-        // so we don't verify since it will fail
-        if (snippetDAO.hasSnippet(snippetDto.getId())) {
-            snippetDAO.verifyUpdate(snippetDto);
+        try {
+            // if snippet does not exist, then the update request is likely creating it
+            // so we don't verify since it will fail
+            if (snippetDAO.hasSnippet(snippetDto.getId())) {
+                snippetDAO.verifyUpdate(snippetDto);
+            }
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(snippetDto.getId());
+            throw e;
         }
     }
 
+    private Set<Revision> getRevisionsForGroup(final String groupId) {
+        final Set<Revision> revisions = new HashSet<>();
+
+        revisions.add(revisionManager.getRevision(groupId));
+        final ProcessGroup processGroup = processGroupDAO.getProcessGroup(groupId);
+        if (processGroup == null) {
+            throw new IllegalArgumentException("Snippet contains a reference to Process Group with ID " + groupId + " but no Process Group exists with that ID");
+        }
+
+        processGroup.getConnections().stream().map(c -> c.getIdentifier()).map(id -> revisionManager.getRevision(id)).forEach(rev -> revisions.add(rev));
+        processGroup.getFunnels().stream().map(c -> c.getIdentifier()).map(id -> revisionManager.getRevision(id)).forEach(rev -> revisions.add(rev));
+        processGroup.getInputPorts().stream().map(c -> c.getIdentifier()).map(id -> revisionManager.getRevision(id)).forEach(rev -> revisions.add(rev));
+        processGroup.getOutputPorts().stream().map(c -> c.getIdentifier()).map(id -> revisionManager.getRevision(id)).forEach(rev -> revisions.add(rev));
+        processGroup.getLabels().stream().map(c -> c.getIdentifier()).map(id -> revisionManager.getRevision(id)).forEach(rev -> revisions.add(rev));
+        processGroup.getProcessors().stream().map(c -> c.getIdentifier()).map(id -> revisionManager.getRevision(id)).forEach(rev -> revisions.add(rev));
+        processGroup.getRemoteProcessGroups().stream().map(c -> c.getIdentifier()).map(id -> revisionManager.getRevision(id)).forEach(rev -> revisions.add(rev));
+        processGroup.getProcessGroups().stream().map(c -> c.getIdentifier()).forEach(id -> revisions.addAll(getRevisionsForGroup(id)));
+
+        return revisions;
+    }
+
+    private Set<Revision> getRevisionsForSnippet(final SnippetDTO snippetDto) {
+        final Set<Revision> requiredRevisions = new HashSet<>();
+        requiredRevisions.add(revisionManager.getRevision(snippetDto.getId()));
+        snippetDto.getConnections().entrySet().stream()
+            .map(entry -> new Revision(entry.getValue().getVersion(), entry.getValue().getClientId(), entry.getKey()))
+            .forEach(rev -> requiredRevisions.add(rev));
+
+        snippetDto.getFunnels().entrySet().stream()
+            .map(entry -> new Revision(entry.getValue().getVersion(), entry.getValue().getClientId(), entry.getKey()))
+            .forEach(rev -> requiredRevisions.add(rev));
+
+        snippetDto.getInputPorts().entrySet().stream()
+            .map(entry -> new Revision(entry.getValue().getVersion(), entry.getValue().getClientId(), entry.getKey()))
+            .forEach(rev -> requiredRevisions.add(rev));
+
+        snippetDto.getOutputPorts().entrySet().stream()
+            .map(entry -> new Revision(entry.getValue().getVersion(), entry.getValue().getClientId(), entry.getKey()))
+            .forEach(rev -> requiredRevisions.add(rev));
+
+        snippetDto.getLabels().entrySet().stream()
+            .map(entry -> new Revision(entry.getValue().getVersion(), entry.getValue().getClientId(), entry.getKey()))
+            .forEach(rev -> requiredRevisions.add(rev));
+
+        snippetDto.getProcessors().entrySet().stream()
+            .map(entry -> new Revision(entry.getValue().getVersion(), entry.getValue().getClientId(), entry.getKey()))
+            .forEach(rev -> requiredRevisions.add(rev));
+
+        snippetDto.getRemoteProcessGroups().entrySet().stream()
+            .map(entry -> new Revision(entry.getValue().getVersion(), entry.getValue().getClientId(), entry.getKey()))
+            .forEach(rev -> requiredRevisions.add(rev));
+
+        for (final String groupId : snippetDto.getProcessGroups().keySet()) {
+            requiredRevisions.addAll(getRevisionsForGroup(groupId));
+        }
+
+        return requiredRevisions;
+    }
+
+    private ProcessGroup getGroup(final String groupId) {
+        return revisionManager.get(groupId, rev -> processGroupDAO.getProcessGroup(groupId));
+    }
+
     @Override
-    public ConfigurationSnapshot<SnippetDTO> updateSnippet(final Revision revision, final SnippetDTO snippetDto) {
+    public UpdateResult<SnippetEntity> updateSnippet(final Revision revision, final SnippetDTO snippetDto) {
         // if label does not exist, then create new label
         if (snippetDAO.hasSnippet(snippetDto.getId()) == false) {
-            return createSnippet(revision, snippetDto);
+            return new UpdateResult<>(createSnippet(snippetDto), true);
         }
 
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<SnippetDTO>() {
-            @Override
-            public ConfigurationResult<SnippetDTO> execute() {
-                // update the snippet
-                final Snippet snippet = snippetDAO.updateSnippet(snippetDto);
+        final Set<Revision> requiredRevisions = getRevisionsForSnippet(snippetDto);
 
-                // build the snippet dto
-                final SnippetDTO responseSnippetDto = dtoFactory.createSnippetDto(snippet);
-                responseSnippetDto.setContents(snippetUtils.populateFlowSnippet(snippet, false, false));
+        // if the parent group is specified in the request, ensure write access to it as it could be moving the components in the snippet
+        final String requestProcessGroupIdentifier = snippetDto.getParentGroupId();
+        if (requestProcessGroupIdentifier != null) {
+            final ProcessGroup requestProcessGroup = processGroupDAO.getProcessGroup(requestProcessGroupIdentifier);
+            requestProcessGroup.authorize(authorizer, RequestAction.WRITE);
+        }
 
-                // save updated controller if applicable
-                if (snippetDto.getParentGroupId() != null && snippet.isLinked()) {
+        final NiFiUser user = NiFiUserUtils.getNiFiUser();
+        final String modifier = user.getUserName();
+        final RevisionClaim revisionClaim = new StandardRevisionClaim(requiredRevisions);
+
+        RevisionUpdate<SnippetDTO> versionedSnippet;
+        try {
+            versionedSnippet = revisionManager.updateRevision(revisionClaim, user, new UpdateRevisionTask<SnippetDTO>() {
+                @Override
+                public RevisionUpdate<SnippetDTO> update() {
+                    // get the updated component
+                    final Snippet snippet = snippetDAO.updateSnippet(snippetDto);
+
+                    // ensure write access to the flow
+                    final ProcessGroup processGroup = getGroup(snippet.getParentGroupId());
+                    processGroup.authorize(authorizer, RequestAction.WRITE);
+
+                    // save updated controller
                     controllerFacade.save();
+
+                    final SnippetDTO snippetDto = dtoFactory.createSnippetDto(snippet);
+
+                    // Update each of the revisions that were required and
+                    // build new SnippetDTO that contains all of the updated revisions
+                    final SnippetDTO updatedSnippet = new SnippetDTO();
+                    updatedSnippet.setId(snippetDto.getId());
+                    updatedSnippet.setParentGroupId(snippetDto.getParentGroupId());
+                    updatedSnippet.setUri(snippetDto.getUri());
+                    updatedSnippet.setLinked(snippetDto.isLinked());
+
+                    updatedSnippet.setConnections(updateRevisions(snippetDto.getConnections(), modifier));
+                    updatedSnippet.setFunnels(updateRevisions(snippetDto.getFunnels(), modifier));
+                    updatedSnippet.setInputPorts(updateRevisions(snippetDto.getInputPorts(), modifier));
+                    updatedSnippet.setLabels(updateRevisions(snippetDto.getLabels(), modifier));
+                    updatedSnippet.setOutputPorts(updateRevisions(snippetDto.getOutputPorts(), modifier));
+                    updatedSnippet.setProcessGroups(updateRevisions(snippetDto.getProcessGroups(), modifier));
+                    updatedSnippet.setProcessors(updateRevisions(snippetDto.getProcessors(), modifier));
+                    updatedSnippet.setRemoteProcessGroups(updateRevisions(snippetDto.getRemoteProcessGroups(), modifier));
+
+                    final Revision updatedSnippetRevision = incrementRevision(revision);
+                    final FlowModification lastModification = new FlowModification(updatedSnippetRevision, modifier);
+                    return new StandardRevisionUpdate<>(updatedSnippet, lastModification);
                 }
+            });
+        } catch (ExpiredRevisionClaimException e) {
+            throw new InvalidRevisionException("Failed to update Snippet", e);
+        }
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
+        final ProcessGroup parentGroup = processGroupDAO.getProcessGroup(versionedSnippet.getComponent().getParentGroupId());
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(parentGroup);
+        return new UpdateResult<>(entityFactory.createSnippetEntity(versionedSnippet.getComponent(), dtoFactory.createRevisionDTO(versionedSnippet.getLastModification()), accessPolicy), false);
+    }
 
-                    @Override
-                    public SnippetDTO getConfiguration() {
-                        return responseSnippetDto;
-                    }
-                };
-            }
-        });
+    private Map<String, RevisionDTO> updateRevisions(final Map<String, RevisionDTO> originalDtos, final String modifier) {
+        final Map<String, RevisionDTO> updatedComponents = new HashMap<>(originalDtos.size());
+        for (final Map.Entry<String, RevisionDTO> entry : originalDtos.entrySet()) {
+            final String id = entry.getKey();
+            final RevisionDTO revisionDto = entry.getValue();
+
+            final RevisionDTO updatedDto = new RevisionDTO();
+            updatedDto.setClientId(revisionDto.getClientId());
+            updatedDto.setLastModifier(modifier);
+            updatedDto.setVersion(revisionDto.getVersion() + 1);
+            updatedComponents.put(id, updatedDto);
+        }
+
+        return updatedComponents;
     }
 
     @Override
-    public ConfigurationSnapshot<PortDTO> updateInputPort(final Revision revision, final String groupId, final PortDTO inputPortDTO) {
+    public UpdateResult<PortEntity> updateInputPort(final Revision revision, final PortDTO inputPortDTO) {
         // if input port does not exist, then create new input port
-        if (inputPortDAO.hasPort(groupId, inputPortDTO.getId()) == false) {
-            return createInputPort(revision, groupId, inputPortDTO);
+        if (inputPortDAO.hasPort(inputPortDTO.getId()) == false) {
+            return new UpdateResult<>(createInputPort(inputPortDTO.getParentGroupId(), inputPortDTO), true);
         }
 
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<PortDTO>() {
-            @Override
-            public ConfigurationResult<PortDTO> execute() {
-                final Port inputPort = inputPortDAO.updatePort(groupId, inputPortDTO);
+        final Port inputPortNode = inputPortDAO.getPort(inputPortDTO.getId());
+        final RevisionUpdate<PortDTO> snapshot = updateComponent(revision,
+            inputPortNode,
+            () -> inputPortDAO.updatePort(inputPortDTO),
+            port -> dtoFactory.createPortDto(port));
 
-                // save updated controller
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public PortDTO getConfiguration() {
-                        return dtoFactory.createPortDto(inputPort);
-                    }
-                };
-            }
-        });
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(inputPortNode);
+        final PortStatusDTO status = dtoFactory.createPortStatusDto(controllerFacade.getInputPortStatus(inputPortNode.getIdentifier()));
+        return new UpdateResult<>(entityFactory.createPortEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy, status), false);
     }
 
     @Override
-    public ConfigurationSnapshot<PortDTO> updateOutputPort(final Revision revision, final String groupId, final PortDTO outputPortDTO) {
+    public UpdateResult<PortEntity> updateOutputPort(final Revision revision, final PortDTO outputPortDTO) {
         // if output port does not exist, then create new output port
-        if (outputPortDAO.hasPort(groupId, outputPortDTO.getId()) == false) {
-            return createOutputPort(revision, groupId, outputPortDTO);
+        if (outputPortDAO.hasPort(outputPortDTO.getId()) == false) {
+            return new UpdateResult<>(createOutputPort(outputPortDTO.getParentGroupId(), outputPortDTO), true);
         }
 
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<PortDTO>() {
-            @Override
-            public ConfigurationResult<PortDTO> execute() {
-                final Port outputPort = outputPortDAO.updatePort(groupId, outputPortDTO);
+        final Port outputPortNode = outputPortDAO.getPort(outputPortDTO.getId());
+        final RevisionUpdate<PortDTO> snapshot = updateComponent(revision,
+            outputPortNode,
+            () -> outputPortDAO.updatePort(outputPortDTO),
+            port -> dtoFactory.createPortDto(port));
 
-                // save updated controller
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public PortDTO getConfiguration() {
-                        return dtoFactory.createPortDto(outputPort);
-                    }
-                };
-            }
-        });
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(outputPortNode);
+        final PortStatusDTO status = dtoFactory.createPortStatusDto(controllerFacade.getOutputPortStatus(outputPortNode.getIdentifier()));
+        return new UpdateResult<>(entityFactory.createPortEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy, status), false);
     }
 
     @Override
-    public ConfigurationSnapshot<RemoteProcessGroupDTO> updateRemoteProcessGroup(final Revision revision, final String groupId, final RemoteProcessGroupDTO remoteProcessGroupDTO) {
+    public UpdateResult<RemoteProcessGroupEntity> updateRemoteProcessGroup(final Revision revision, final RemoteProcessGroupDTO remoteProcessGroupDTO) {
         // if controller reference does not exist, then create new controller reference
-        if (remoteProcessGroupDAO.hasRemoteProcessGroup(groupId, remoteProcessGroupDTO.getId()) == false) {
-            return createRemoteProcessGroup(revision, groupId, remoteProcessGroupDTO);
+        if (remoteProcessGroupDAO.hasRemoteProcessGroup(remoteProcessGroupDTO.getId()) == false) {
+            return new UpdateResult<>(createRemoteProcessGroup(remoteProcessGroupDTO.getParentGroupId(), remoteProcessGroupDTO), true);
         }
 
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<RemoteProcessGroupDTO>() {
-            @Override
-            public ConfigurationResult<RemoteProcessGroupDTO> execute() {
-                final RemoteProcessGroup remoteProcessGroup = remoteProcessGroupDAO.updateRemoteProcessGroup(groupId, remoteProcessGroupDTO);
+        final RemoteProcessGroup remoteProcessGroupNode = remoteProcessGroupDAO.getRemoteProcessGroup(remoteProcessGroupDTO.getId());
+        final RevisionUpdate<RemoteProcessGroupDTO> snapshot = updateComponent(
+            revision,
+            remoteProcessGroupNode,
+            () -> remoteProcessGroupDAO.updateRemoteProcessGroup(remoteProcessGroupDTO),
+            remoteProcessGroup -> dtoFactory.createRemoteProcessGroupDto(remoteProcessGroup));
 
-                // save updated controller
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public RemoteProcessGroupDTO getConfiguration() {
-                        return dtoFactory.createRemoteProcessGroupDto(remoteProcessGroup);
-                    }
-                };
-            }
-        });
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(remoteProcessGroupNode);
+        final RevisionDTO updateRevision = dtoFactory.createRevisionDTO(snapshot.getLastModification());
+        final RemoteProcessGroupStatusDTO status = dtoFactory.createRemoteProcessGroupStatusDto(controllerFacade.getRemoteProcessGroupStatus(remoteProcessGroupNode.getIdentifier()));
+        return new UpdateResult<>(entityFactory.createRemoteProcessGroupEntity(snapshot.getComponent(), updateRevision, accessPolicy, status), false);
     }
 
     @Override
-    public ConfigurationSnapshot<RemoteProcessGroupPortDTO> updateRemoteProcessGroupInputPort(
-            final Revision revision, final String groupId, final String remoteProcessGroupId, final RemoteProcessGroupPortDTO remoteProcessGroupPortDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<RemoteProcessGroupPortDTO>() {
-            @Override
-            public ConfigurationResult<RemoteProcessGroupPortDTO> execute() {
-                // update the remote port
-                final RemoteGroupPort remoteGroupPort = remoteProcessGroupDAO.updateRemoteProcessGroupInputPort(groupId, remoteProcessGroupId, remoteProcessGroupPortDTO);
+    public RemoteProcessGroupPortEntity updateRemoteProcessGroupInputPort(
+            final Revision revision, final String remoteProcessGroupId, final RemoteProcessGroupPortDTO remoteProcessGroupPortDTO) {
 
-                // save updated controller
-                controllerFacade.save();
+        final RemoteProcessGroup remoteProcessGroupNode = remoteProcessGroupDAO.getRemoteProcessGroup(remoteProcessGroupPortDTO.getGroupId());
+        final RevisionUpdate<RemoteProcessGroupPortDTO> snapshot = updateComponent(
+            revision,
+            remoteProcessGroupNode,
+            () -> remoteProcessGroupDAO.updateRemoteProcessGroupInputPort(remoteProcessGroupId, remoteProcessGroupPortDTO),
+            remoteGroupPort -> dtoFactory.createRemoteProcessGroupPortDto(remoteGroupPort));
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public RemoteProcessGroupPortDTO getConfiguration() {
-                        return dtoFactory.createRemoteProcessGroupPortDto(remoteGroupPort);
-                    }
-                };
-            }
-        });
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(remoteProcessGroupNode);
+        final RevisionDTO updatedRevision = dtoFactory.createRevisionDTO(snapshot.getLastModification());
+        return entityFactory.createRemoteProcessGroupPortEntity(snapshot.getComponent(), updatedRevision, accessPolicy);
     }
 
     @Override
-    public ConfigurationSnapshot<RemoteProcessGroupPortDTO> updateRemoteProcessGroupOutputPort(
-            final Revision revision, final String groupId, final String remoteProcessGroupId, final RemoteProcessGroupPortDTO remoteProcessGroupPortDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<RemoteProcessGroupPortDTO>() {
-            @Override
-            public ConfigurationResult<RemoteProcessGroupPortDTO> execute() {
-                // update the remote port
-                final RemoteGroupPort remoteGroupPort = remoteProcessGroupDAO.updateRemoteProcessGroupOutputPort(groupId, remoteProcessGroupId, remoteProcessGroupPortDTO);
+    public RemoteProcessGroupPortEntity updateRemoteProcessGroupOutputPort(
+            final Revision revision, final String remoteProcessGroupId, final RemoteProcessGroupPortDTO remoteProcessGroupPortDTO) {
 
-                // save updated controller
-                controllerFacade.save();
+        final RemoteProcessGroup remoteProcessGroupNode = remoteProcessGroupDAO.getRemoteProcessGroup(remoteProcessGroupPortDTO.getGroupId());
+        final RevisionUpdate<RemoteProcessGroupPortDTO> snapshot = updateComponent(
+            revision,
+            remoteProcessGroupNode,
+            () -> remoteProcessGroupDAO.updateRemoteProcessGroupOutputPort(remoteProcessGroupId, remoteProcessGroupPortDTO),
+            remoteGroupPort -> dtoFactory.createRemoteProcessGroupPortDto(remoteGroupPort));
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public RemoteProcessGroupPortDTO getConfiguration() {
-                        return dtoFactory.createRemoteProcessGroupPortDto(remoteGroupPort);
-                    }
-                };
-            }
-        });
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(remoteProcessGroupNode);
+        final RevisionDTO updatedRevision = dtoFactory.createRevisionDTO(snapshot.getLastModification());
+        return entityFactory.createRemoteProcessGroupPortEntity(snapshot.getComponent(), updatedRevision, accessPolicy);
     }
 
     @Override
-    public ConfigurationSnapshot<ProcessGroupDTO> updateProcessGroup(final Revision revision, final String parentGroupId, final ProcessGroupDTO processGroupDTO) {
+    public UpdateResult<ProcessGroupEntity> updateProcessGroup(final Revision revision, final ProcessGroupDTO processGroupDTO) {
         // if process group does not exist, then create new process group
         if (processGroupDAO.hasProcessGroup(processGroupDTO.getId()) == false) {
-            if (parentGroupId == null) {
+            if (processGroupDTO.getParentGroupId() == null) {
                 throw new IllegalArgumentException("Unable to create the specified process group since the parent group was not specified.");
             } else {
-                return createProcessGroup(parentGroupId, revision, processGroupDTO);
+                return new UpdateResult<>(createProcessGroup(processGroupDTO.getParentGroupId(), processGroupDTO), true);
             }
         }
 
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ProcessGroupDTO>() {
-            @Override
-            public ConfigurationResult<ProcessGroupDTO> execute() {
-                // update the process group
-                final ProcessGroup processGroup = processGroupDAO.updateProcessGroup(processGroupDTO);
+        final ProcessGroup processGroupNode = processGroupDAO.getProcessGroup(processGroupDTO.getId());
+        final RevisionUpdate<ProcessGroupDTO> snapshot = updateComponent(revision,
+            processGroupNode,
+            () -> processGroupDAO.updateProcessGroup(processGroupDTO),
+            processGroup -> dtoFactory.createProcessGroupDto(processGroup));
 
-                // save updated controller
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ProcessGroupDTO getConfiguration() {
-                        return dtoFactory.createProcessGroupDto(processGroup);
-                    }
-                };
-            }
-        });
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(processGroupNode);
+        final RevisionDTO updatedRevision = dtoFactory.createRevisionDTO(snapshot.getLastModification());
+        final ProcessGroupStatusDTO status = dtoFactory.createConciseProcessGroupStatusDto(controllerFacade.getProcessGroupStatus(processGroupNode.getIdentifier()));
+        return new UpdateResult<>(entityFactory.createProcessGroupEntity(snapshot.getComponent(), updatedRevision, accessPolicy, status), false);
     }
 
     @Override
     public ConfigurationSnapshot<ControllerConfigurationDTO> updateControllerConfiguration(final Revision revision, final ControllerConfigurationDTO controllerConfigurationDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ControllerConfigurationDTO>() {
-            @Override
-            public ConfigurationResult<ControllerConfigurationDTO> execute() {
-                // update the controller configuration through the proxy
-                if (controllerConfigurationDTO.getName() != null) {
-                    controllerFacade.setName(controllerConfigurationDTO.getName());
-                }
-                if (controllerConfigurationDTO.getComments() != null) {
-                    controllerFacade.setComments(controllerConfigurationDTO.getComments());
-                }
-                if (controllerConfigurationDTO.getMaxTimerDrivenThreadCount() != null) {
-                    controllerFacade.setMaxTimerDrivenThreadCount(controllerConfigurationDTO.getMaxTimerDrivenThreadCount());
-                }
-                if (controllerConfigurationDTO.getMaxEventDrivenThreadCount() != null) {
-                    controllerFacade.setMaxEventDrivenThreadCount(controllerConfigurationDTO.getMaxEventDrivenThreadCount());
-                }
-
-                // create the controller configuration dto
-                final ControllerConfigurationDTO controllerConfig = getControllerConfiguration();
-
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return controllerConfig;
-                    }
-                };
+        final Supplier<ControllerConfigurationDTO> daoUpdate = () -> {
+            // update the controller configuration through the proxy
+            if (controllerConfigurationDTO.getName() != null) {
+                controllerFacade.setName(controllerConfigurationDTO.getName());
             }
-        });
+            if (controllerConfigurationDTO.getComments() != null) {
+                controllerFacade.setComments(controllerConfigurationDTO.getComments());
+            }
+            if (controllerConfigurationDTO.getMaxTimerDrivenThreadCount() != null) {
+                controllerFacade.setMaxTimerDrivenThreadCount(controllerConfigurationDTO.getMaxTimerDrivenThreadCount());
+            }
+            if (controllerConfigurationDTO.getMaxEventDrivenThreadCount() != null) {
+                controllerFacade.setMaxEventDrivenThreadCount(controllerConfigurationDTO.getMaxEventDrivenThreadCount());
+            }
+
+            return controllerConfigurationDTO;
+        };
+
+        final RevisionUpdate<ControllerConfigurationDTO> updatedComponent = updateComponent(
+            revision,
+            controllerFacade,
+            daoUpdate,
+            controller -> getControllerConfiguration());
+
+        return new ConfigurationSnapshot<>(updatedComponent.getLastModification().getRevision().getVersion());
     }
 
     @Override
@@ -778,16 +880,20 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
             clusterManager.requestReconnection(nodeDTO.getNodeId(), userDn);
         } else if (Node.Status.DISCONNECTING.name().equalsIgnoreCase(nodeDTO.getStatus())) {
             clusterManager.requestDisconnection(nodeDTO.getNodeId(), userDn);
-        } else {
-            // handle primary
-            final Boolean primary = nodeDTO.isPrimary();
-            if (primary != null && primary) {
-                clusterManager.setPrimaryNode(nodeDTO.getNodeId(), userDn);
-            }
         }
 
         final String nodeId = nodeDTO.getNodeId();
-        return dtoFactory.createNodeDTO(clusterManager.getNode(nodeId), clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId));
+
+        NodeIdentifier nodeIdentifier = null;
+        for (final Node node : clusterManager.getNodes()) {
+            if (node.getNodeId().getId().equals(nodeId)) {
+                nodeIdentifier = node.getNodeId();
+                break;
+            }
+        }
+
+        final NodeHeartbeat nodeHeartbeat = nodeIdentifier == null ? null : clusterManager.getLatestHeartbeat(nodeIdentifier);
+        return dtoFactory.createNodeDTO(clusterManager.getNode(nodeId), nodeHeartbeat, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId));
     }
 
     @Override
@@ -796,125 +902,85 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public void verifyCanClearProcessorState(final String groupId, final String processorId) {
-        processorDAO.verifyClearState(groupId, processorId);
+    public void verifyCanClearProcessorState(final String processorId) {
+        try {
+            processorDAO.verifyClearState(processorId);
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(processorId);
+            throw e;
+        }
     }
 
     @Override
-    public ConfigurationSnapshot<Void> clearProcessorState(final Revision revision, final String groupId, final String processorId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                // clear the state for the specified component
-                processorDAO.clearState(groupId, processorId);
+    public void clearProcessorState(final String processorId) {
+        clearComponentState(processorId, () -> processorDAO.clearState(processorId));
+    }
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
+    private void clearComponentState(final String componentId, final Runnable clearState) {
+        revisionManager.get(componentId, rev -> {
+            clearState.run();
+            return null;
         });
     }
 
     @Override
     public void verifyCanClearControllerServiceState(final String controllerServiceId) {
-        controllerServiceDAO.verifyClearState(controllerServiceId);
+        try {
+            controllerServiceDAO.verifyClearState(controllerServiceId);
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(controllerServiceId);
+            throw e;
+        }
     }
 
     @Override
-    public ConfigurationSnapshot<Void> clearControllerServiceState(final Revision revision, final String controllerServiceId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                // clear the state for the specified component
-                controllerServiceDAO.clearState(controllerServiceId);
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+    public void clearControllerServiceState(final String controllerServiceId) {
+        clearComponentState(controllerServiceId, () -> controllerServiceDAO.clearState(controllerServiceId));
     }
 
     @Override
     public void verifyCanClearReportingTaskState(final String reportingTaskId) {
-        reportingTaskDAO.verifyClearState(reportingTaskId);
+        try {
+            reportingTaskDAO.verifyClearState(reportingTaskId);
+        } catch (final Exception e) {
+            revisionManager.cancelClaim(reportingTaskId);
+            throw e;
+        }
     }
 
     @Override
-    public ConfigurationSnapshot<Void> clearReportingTaskState(final Revision revision, final String reportingTaskId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                // clear the state for the specified component
-                reportingTaskDAO.clearState(reportingTaskId);
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+    public void clearReportingTaskState(final String reportingTaskId) {
+        clearComponentState(reportingTaskId, () -> reportingTaskDAO.clearState(reportingTaskId));
     }
 
     @Override
-    public ConfigurationSnapshot<Void> deleteConnection(final Revision revision, final String groupId, final String connectionId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                connectionDAO.deleteConnection(groupId, connectionId);
+    public ConnectionEntity deleteConnection(final Revision revision, final String connectionId) {
+        final Connection connection = connectionDAO.getConnection(connectionId);
+        final ConnectionDTO snapshot = deleteComponent(
+            revision,
+            connection,
+            () -> connectionDAO.deleteConnection(connectionId),
+            dtoFactory.createConnectionDto(connection));
 
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+        return entityFactory.createConnectionEntity(snapshot, null, null, null);
     }
 
     @Override
-    public DropRequestDTO deleteFlowFileDropRequest(String groupId, String connectionId, String dropRequestId) {
-        return dtoFactory.createDropRequestDTO(connectionDAO.deleteFlowFileDropRequest(groupId, connectionId, dropRequestId));
+    public DropRequestDTO deleteFlowFileDropRequest(String connectionId, String dropRequestId) {
+        final Connection connection = connectionDAO.getConnection(connectionId);
+        connection.authorize(authorizer, RequestAction.WRITE);
+
+        return dtoFactory.createDropRequestDTO(connectionDAO.deleteFlowFileDropRequest(connectionId, dropRequestId));
     }
 
     @Override
-    public ListingRequestDTO deleteFlowFileListingRequest(String groupId, String connectionId, String listingRequestId) {
-        final ListingRequestDTO listRequest = dtoFactory.createListingRequestDTO(connectionDAO.deleteFlowFileListingRequest(groupId, connectionId, listingRequestId));
+    public ListingRequestDTO deleteFlowFileListingRequest(String connectionId, String listingRequestId) {
+        final Connection connection = connectionDAO.getConnection(connectionId);
+        connection.authorize(authorizer, RequestAction.WRITE);
+
+        final ListingRequestDTO listRequest = dtoFactory.createListingRequestDTO(connectionDAO.deleteFlowFileListingRequest(connectionId, listingRequestId));
 
         // include whether the source and destination are running
-        final Connection connection = connectionDAO.getConnection(groupId, connectionId);
         if (connection.getSource() != null) {
             listRequest.setSourceRunning(connection.getSource().isRunning());
         }
@@ -926,79 +992,75 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public ConfigurationSnapshot<Void> deleteProcessor(final Revision revision, final String groupId, final String processorId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                // delete the processor and synchronize the connection state
-                processorDAO.deleteProcessor(groupId, processorId);
+    public ProcessorEntity deleteProcessor(final Revision revision, final String processorId) {
+        final ProcessorNode processor = processorDAO.getProcessor(processorId);
+        final ProcessorDTO snapshot = deleteComponent(
+            revision,
+            processor,
+            () -> processorDAO.deleteProcessor(processorId),
+            dtoFactory.createProcessorDto(processor));
 
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+        return entityFactory.createProcessorEntity(snapshot, null, null, null);
     }
 
     @Override
-    public ConfigurationSnapshot<Void> deleteLabel(final Revision revision, final String groupId, final String labelId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                // delete the label
-                labelDAO.deleteLabel(groupId, labelId);
+    public LabelEntity deleteLabel(final Revision revision, final String labelId) {
+        final Label label = labelDAO.getLabel(labelId);
+        final LabelDTO snapshot = deleteComponent(
+            revision,
+            label,
+            () -> labelDAO.deleteLabel(labelId),
+            dtoFactory.createLabelDto(label));
 
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+        return entityFactory.createLabelEntity(snapshot, null, null);
     }
 
     @Override
-    public ConfigurationSnapshot<Void> deleteFunnel(final Revision revision, final String groupId, final String funnelId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
+    public FunnelEntity deleteFunnel(final Revision revision, final String funnelId) {
+        final Funnel funnel = funnelDAO.getFunnel(funnelId);
+        final FunnelDTO snapshot = deleteComponent(
+            revision,
+            funnel,
+            () -> funnelDAO.deleteFunnel(funnelId),
+            dtoFactory.createFunnelDto(funnel));
+
+        return entityFactory.createFunnelEntity(snapshot, null, null);
+    }
+
+    /**
+     * Deletes a component using the Optimistic Locking Manager
+     *
+     * @param revision the current revision
+     * @param deleteAction the action that deletes the component via the appropriate DAO object
+     * @return a ConfigurationSnapshot that represents the new configuration
+     */
+    private <D, C> D deleteComponent(final Revision revision, final Authorizable authorizable, final Runnable deleteAction, final D dto) {
+        final RevisionClaim claim = new StandardRevisionClaim(revision);
+        final NiFiUser user = NiFiUserUtils.getNiFiUser();
+
+        return revisionManager.deleteRevision(claim, user, new DeleteRevisionTask<D>() {
             @Override
-            public ConfigurationResult<Void> execute() {
-                // delete the label
-                funnelDAO.deleteFunnel(groupId, funnelId);
+            public D performTask() {
+                logger.debug("Attempting to delete component {} with claim {}", authorizable, claim);
+
+                // ensure access to the component
+                authorizable.authorize(authorizer, RequestAction.WRITE);
+
+                // If the component has outgoing connections, ensure that we can delete them all.
+                if (authorizable instanceof Connectable) {
+                    final Connectable connectable = (Connectable) authorizable;
+                    for (final Connection connection : connectable.getConnections()) {
+                        connection.authorize(authorizer, RequestAction.WRITE);
+                    }
+                }
+
+                deleteAction.run();
 
                 // save the flow
                 controllerFacade.save();
+                logger.debug("Deletion of component {} was successful", authorizable);
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
+                return dto;
             }
         });
     }
@@ -1009,135 +1071,67 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public ConfigurationSnapshot<Void> deleteSnippet(final Revision revision, final String snippetId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                // determine if this snippet was linked to the data flow
-                Snippet snippet = snippetDAO.getSnippet(snippetId);
-                boolean linked = snippet.isLinked();
+    public SnippetEntity deleteSnippet(final Revision revision, final String snippetId) {
+        final Snippet snippet = snippetDAO.getSnippet(snippetId);
+        final ProcessGroup processGroup = getGroup(snippet.getParentGroupId());
 
-                // delete the snippet
-                snippetDAO.deleteSnippet(snippetId);
+        // ensure access to process group
+        processGroup.authorize(authorizer, RequestAction.WRITE);
 
-                // save the flow if necessary
-                if (linked) {
-                    controllerFacade.save();
-                }
+        final SnippetDTO snapshot = deleteComponent(revision,
+            processGroup,
+            () -> snippetDAO.deleteSnippet(snippetId),
+            dtoFactory.createSnippetDto(snippet));
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+        return entityFactory.createSnippetEntity(snapshot, null, null);
     }
 
     @Override
-    public ConfigurationSnapshot<Void> deleteInputPort(final Revision revision, final String groupId, final String inputPortId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                inputPortDAO.deletePort(groupId, inputPortId);
+    public PortEntity deleteInputPort(final Revision revision, final String inputPortId) {
+        final Port port = inputPortDAO.getPort(inputPortId);
+        final PortDTO snapshot = deleteComponent(
+            revision,
+            port,
+            () -> inputPortDAO.deletePort(inputPortId),
+            dtoFactory.createPortDto(port));
 
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+        return entityFactory.createPortEntity(snapshot, null, null, null);
     }
 
     @Override
-    public ConfigurationSnapshot<Void> deleteOutputPort(final Revision revision, final String groupId, final String outputPortId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                outputPortDAO.deletePort(groupId, outputPortId);
+    public PortEntity deleteOutputPort(final Revision revision, final String outputPortId) {
+        final Port port = outputPortDAO.getPort(outputPortId);
+        final PortDTO snapshot = deleteComponent(
+            revision,
+            port,
+            () -> outputPortDAO.deletePort(outputPortId),
+            dtoFactory.createPortDto(port));
 
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+        return entityFactory.createPortEntity(snapshot, null, null, null);
     }
 
     @Override
-    public ConfigurationSnapshot<Void> deleteProcessGroup(final Revision revision, final String groupId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                processGroupDAO.deleteProcessGroup(groupId);
+    public ProcessGroupEntity deleteProcessGroup(final Revision revision, final String groupId) {
+        final ProcessGroup processGroup = processGroupDAO.getProcessGroup(groupId);
+        final ProcessGroupDTO snapshot = deleteComponent(
+            revision,
+            processGroup,
+            () -> processGroupDAO.deleteProcessGroup(groupId),
+            dtoFactory.createProcessGroupDto(processGroup));
 
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+        return entityFactory.createProcessGroupEntity(snapshot, null, null, null);
     }
 
     @Override
-    public ConfigurationSnapshot<Void> deleteRemoteProcessGroup(final Revision revision, final String groupId, final String remoteProcessGroupId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                remoteProcessGroupDAO.deleteRemoteProcessGroup(groupId, remoteProcessGroupId);
+    public RemoteProcessGroupEntity deleteRemoteProcessGroup(final Revision revision, final String remoteProcessGroupId) {
+        final RemoteProcessGroup remoteProcessGroup = remoteProcessGroupDAO.getRemoteProcessGroup(remoteProcessGroupId);
+        final RemoteProcessGroupDTO snapshot = deleteComponent(
+            revision,
+            remoteProcessGroup,
+            () -> remoteProcessGroupDAO.deleteRemoteProcessGroup(remoteProcessGroupId),
+            dtoFactory.createRemoteProcessGroupDto(remoteProcessGroup));
 
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+        return entityFactory.createRemoteProcessGroupEntity(snapshot, null, null, null);
     }
 
     @Override
@@ -1147,46 +1141,34 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public ConfigurationSnapshot<ConnectionDTO> createConnection(final Revision revision, final String groupId, final ConnectionDTO connectionDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ConnectionDTO>() {
-            @Override
-            public ConfigurationResult<ConnectionDTO> execute() {
-                // ensure id is set
-                if (StringUtils.isBlank(connectionDTO.getId())) {
-                    connectionDTO.setId(UUID.randomUUID().toString());
-                }
+    public ConnectionEntity createConnection(final String groupId, final ConnectionDTO connectionDTO) {
+        final RevisionUpdate<ConnectionDTO> snapshot = createComponent(
+            connectionDTO,
+            () -> connectionDAO.createConnection(groupId, connectionDTO),
+            connection -> dtoFactory.createConnectionDto(connection));
 
-                final Connection connection = connectionDAO.createConnection(groupId, connectionDTO);
-
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return true;
-                    }
-
-                    @Override
-                    public ConnectionDTO getConfiguration() {
-                        return dtoFactory.createConnectionDto(connection);
-                    }
-                };
-            }
-        });
+        final Connection connection = connectionDAO.getConnection(connectionDTO.getId());
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(connection);
+        final ConnectionStatusDTO status = dtoFactory.createConnectionStatusDto(controllerFacade.getConnectionStatus(connectionDTO.getId()));
+        return entityFactory.createConnectionEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy, status);
     }
 
     @Override
-    public DropRequestDTO createFlowFileDropRequest(String groupId, String connectionId, String dropRequestId) {
-        return dtoFactory.createDropRequestDTO(connectionDAO.createFlowFileDropRequest(groupId, connectionId, dropRequestId));
+    public DropRequestDTO createFlowFileDropRequest(String connectionId, String dropRequestId) {
+        final Connection connection = connectionDAO.getConnection(connectionId);
+        connection.authorize(authorizer, RequestAction.WRITE);
+        return dtoFactory.createDropRequestDTO(connectionDAO.createFlowFileDropRequest(connectionId, dropRequestId));
     }
 
     @Override
-    public ListingRequestDTO createFlowFileListingRequest(String groupId, String connectionId, String listingRequestId) {
-        final ListingRequestDTO listRequest = dtoFactory.createListingRequestDTO(connectionDAO.createFlowFileListingRequest(groupId, connectionId, listingRequestId));
+    public ListingRequestDTO createFlowFileListingRequest(String connectionId, String listingRequestId) {
+        final Connection connection = connectionDAO.getConnection(connectionId);
+        connection.authorize(authorizer, RequestAction.WRITE);
+
+        // create the listing request
+        final ListingRequestDTO listRequest = dtoFactory.createListingRequestDTO(connectionDAO.createFlowFileListingRequest(connectionId, listingRequestId));
 
         // include whether the source and destination are running
-        final Connection connection = connectionDAO.getConnection(groupId, connectionId);
         if (connection.getSource() != null) {
             listRequest.setSourceRunning(connection.getSource().isRunning());
         }
@@ -1198,103 +1180,89 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public ConfigurationSnapshot<ProcessorDTO> createProcessor(final Revision revision, final String groupId, final ProcessorDTO processorDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ProcessorDTO>() {
-            @Override
-            public ConfigurationResult<ProcessorDTO> execute() {
-                // ensure id is set
-                if (StringUtils.isBlank(processorDTO.getId())) {
-                    processorDTO.setId(UUID.randomUUID().toString());
-                }
+    public ProcessorEntity createProcessor(final String groupId, final ProcessorDTO processorDTO) {
+        final RevisionUpdate<ProcessorDTO> snapshot = createComponent(
+            processorDTO,
+            () -> processorDAO.createProcessor(groupId, processorDTO),
+            processor -> dtoFactory.createProcessorDto(processor));
 
-                // create the processor
-                final ProcessorNode processor = processorDAO.createProcessor(groupId, processorDTO);
-
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return true;
-                    }
-
-                    @Override
-                    public ProcessorDTO getConfiguration() {
-                        return dtoFactory.createProcessorDto(processor);
-                    }
-                };
-            }
-        });
+        final ProcessorNode processor = processorDAO.getProcessor(processorDTO.getId());
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(processor);
+        final ProcessorStatusDTO status = dtoFactory.createProcessorStatusDto(controllerFacade.getProcessorStatus(processorDTO.getId()));
+        return entityFactory.createProcessorEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy, status);
     }
 
     @Override
-    public ConfigurationSnapshot<LabelDTO> createLabel(final Revision revision, final String groupId, final LabelDTO labelDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<LabelDTO>() {
-            @Override
-            public ConfigurationResult<LabelDTO> execute() {
-                // ensure id is set
-                if (StringUtils.isBlank(labelDTO.getId())) {
-                    labelDTO.setId(UUID.randomUUID().toString());
-                }
+    public LabelEntity createLabel(final String groupId, final LabelDTO labelDTO) {
+        final RevisionUpdate<LabelDTO> snapshot = createComponent(
+            labelDTO,
+            () -> labelDAO.createLabel(groupId, labelDTO),
+            label -> dtoFactory.createLabelDto(label));
 
-                // add the label
-                final Label label = labelDAO.createLabel(groupId, labelDTO);
+        final Label label = labelDAO.getLabel(labelDTO.getId());
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(label);
+        return entityFactory.createLabelEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy);
+    }
 
-                // save the flow
-                controllerFacade.save();
+    /**
+     * Creates a component using the optimistic locking manager.
+     *
+     * @param componentDto the DTO that will be used to create the component
+     * @param daoCreation A Supplier that will create the NiFi Component to use
+     * @param dtoCreation a Function that will convert the NiFi Component into a corresponding DTO
+     *
+     * @param <D> the DTO Type
+     * @param <C> the NiFi Component Type
+     *
+     * @return a RevisionUpdate that represents the updated configuration
+     */
+    private <D, C> RevisionUpdate<D> createComponent(final ComponentDTO componentDto,
+        final Supplier<C> daoCreation, final Function<C, D> dtoCreation) {
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return true;
-                    }
+        final String modifier = NiFiUserUtils.getNiFiUserName();
 
-                    @Override
-                    public LabelDTO getConfiguration() {
-                        return dtoFactory.createLabelDto(label);
-                    }
-                };
-            }
+        // ensure id is set
+        if (StringUtils.isBlank(componentDto.getId())) {
+            componentDto.setId(UUID.randomUUID().toString());
+        }
+
+        final String groupId = componentDto.getParentGroupId();
+        return revisionManager.get(groupId, rev -> {
+            // ensure access to process group
+            final ProcessGroup parent = processGroupDAO.getProcessGroup(groupId);
+            parent.authorize(authorizer, RequestAction.WRITE);
+
+            // add the component
+            final C component = daoCreation.get();
+
+            // save the flow
+            controllerFacade.save();
+
+            final D dto = dtoCreation.apply(component);
+            final FlowModification lastMod = new FlowModification(new Revision(0L, rev.getClientId(), componentDto.getId()), modifier);
+            return new StandardRevisionUpdate<D>(dto, lastMod);
         });
     }
+
+
 
     @Override
-    public ConfigurationSnapshot<FunnelDTO> createFunnel(final Revision revision, final String groupId, final FunnelDTO funnelDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<FunnelDTO>() {
-            @Override
-            public ConfigurationResult<FunnelDTO> execute() {
-                // ensure id is set
-                if (StringUtils.isBlank(funnelDTO.getId())) {
-                    funnelDTO.setId(UUID.randomUUID().toString());
-                }
+    public FunnelEntity createFunnel(final String groupId, final FunnelDTO funnelDTO) {
+        final RevisionUpdate<FunnelDTO> snapshot = createComponent(
+            funnelDTO,
+            () -> funnelDAO.createFunnel(groupId, funnelDTO),
+            funnel -> dtoFactory.createFunnelDto(funnel));
 
-                // add the label
-                final Funnel funnel = funnelDAO.createFunnel(groupId, funnelDTO);
-
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return true;
-                    }
-
-                    @Override
-                    public FunnelDTO getConfiguration() {
-                        return dtoFactory.createFunnelDto(funnel);
-                    }
-                };
-            }
-        });
+        final Funnel funnel = funnelDAO.getFunnel(funnelDTO.getId());
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(funnel);
+        return entityFactory.createFunnelEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy);
     }
 
-    private void validateSnippetContents(final FlowSnippetDTO flowSnippet, final String groupId) {
+    private void validateSnippetContents(final FlowSnippetDTO flow) {
         // validate any processors
-        if (flowSnippet.getProcessors() != null) {
-            for (final ProcessorDTO processorDTO : flowSnippet.getProcessors()) {
-                final ProcessorNode processorNode = processorDAO.getProcessor(groupId, processorDTO.getId());
+        if (flow.getProcessors() != null) {
+            for (final ProcessorDTO processorDTO : flow.getProcessors()) {
+                final ProcessorNode processorNode = revisionManager.get(processorDTO.getId(), rev -> processorDAO.getProcessor(processorDTO.getId()));
                 final Collection<ValidationResult> validationErrors = processorNode.getValidationErrors();
                 if (validationErrors != null && !validationErrors.isEmpty()) {
                     final List<String> errors = new ArrayList<>();
@@ -1306,9 +1274,9 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
             }
         }
 
-        if (flowSnippet.getInputPorts() != null) {
-            for (final PortDTO portDTO : flowSnippet.getInputPorts()) {
-                final Port port = inputPortDAO.getPort(groupId, portDTO.getId());
+        if (flow.getInputPorts() != null) {
+            for (final PortDTO portDTO : flow.getInputPorts()) {
+                final Port port = revisionManager.get(portDTO.getId(), rev -> inputPortDAO.getPort(portDTO.getId()));
                 final Collection<ValidationResult> validationErrors = port.getValidationErrors();
                 if (validationErrors != null && !validationErrors.isEmpty()) {
                     final List<String> errors = new ArrayList<>();
@@ -1320,9 +1288,9 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
             }
         }
 
-        if (flowSnippet.getOutputPorts() != null) {
-            for (final PortDTO portDTO : flowSnippet.getOutputPorts()) {
-                final Port port = outputPortDAO.getPort(groupId, portDTO.getId());
+        if (flow.getOutputPorts() != null) {
+            for (final PortDTO portDTO : flow.getOutputPorts()) {
+                final Port port = revisionManager.get(portDTO.getId(), rev -> outputPortDAO.getPort(portDTO.getId()));
                 final Collection<ValidationResult> validationErrors = port.getValidationErrors();
                 if (validationErrors != null && !validationErrors.isEmpty()) {
                     final List<String> errors = new ArrayList<>();
@@ -1335,9 +1303,11 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         }
 
         // get any remote process group issues
-        if (flowSnippet.getRemoteProcessGroups() != null) {
-            for (final RemoteProcessGroupDTO remoteProcessGroupDTO : flowSnippet.getRemoteProcessGroups()) {
-                final RemoteProcessGroup remoteProcessGroup = remoteProcessGroupDAO.getRemoteProcessGroup(groupId, remoteProcessGroupDTO.getId());
+        if (flow.getRemoteProcessGroups() != null) {
+            for (final RemoteProcessGroupDTO remoteProcessGroupDTO : flow.getRemoteProcessGroups()) {
+                final RemoteProcessGroup remoteProcessGroup = revisionManager.get(
+                    remoteProcessGroupDTO.getId(), rev -> remoteProcessGroupDAO.getRemoteProcessGroup(remoteProcessGroupDTO.getId()));
+
                 if (remoteProcessGroup.getAuthorizationIssue() != null) {
                     remoteProcessGroupDTO.setAuthorizationIssues(Arrays.asList(remoteProcessGroup.getAuthorizationIssue()));
                 }
@@ -1346,193 +1316,156 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public ConfigurationSnapshot<FlowSnippetDTO> copySnippet(final Revision revision, final String groupId, final String snippetId, final Double originX, final Double originY) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<FlowSnippetDTO>() {
-            @Override
-            public ConfigurationResult<FlowSnippetDTO> execute() {
-                String id = snippetId;
-
-                // ensure id is set
-                if (StringUtils.isBlank(id)) {
-                    id = UUID.randomUUID().toString();
-                }
+    public FlowEntity copySnippet(final String groupId, final String snippetId, final Double originX, final Double originY, final String idGenerationSeed) {
+        final FlowDTO flowDto = revisionManager.get(groupId,
+            rev -> {
+                // ensure access to process group
+                final ProcessGroup processGroup = processGroupDAO.getProcessGroup(groupId);
+                processGroup.authorize(authorizer, RequestAction.WRITE);
 
                 // create the new snippet
-                final FlowSnippetDTO flowSnippet = snippetDAO.copySnippet(groupId, id, originX, originY);
+                final FlowSnippetDTO snippet = snippetDAO.copySnippet(groupId, snippetId, originX, originY, idGenerationSeed);
+
+                // TODO - READ access to all components in snippet
 
                 // validate the new snippet
-                validateSnippetContents(flowSnippet, groupId);
+                validateSnippetContents(snippet);
 
                 // save the flow
                 controllerFacade.save();
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
+                // identify all components added
+                final Set<String> identifiers = new HashSet<>();
+                snippet.getProcessors().stream()
+                    .map(proc -> proc.getId())
+                    .forEach(id -> identifiers.add(id));
+                snippet.getConnections().stream()
+                    .map(conn -> conn.getId())
+                    .forEach(id -> identifiers.add(id));
+                snippet.getInputPorts().stream()
+                    .map(port -> port.getId())
+                    .forEach(id -> identifiers.add(id));
+                snippet.getOutputPorts().stream()
+                    .map(port -> port.getId())
+                    .forEach(id -> identifiers.add(id));
+                snippet.getProcessGroups().stream()
+                    .map(group -> group.getId())
+                    .forEach(id -> identifiers.add(id));
+                snippet.getRemoteProcessGroups().stream()
+                    .map(remoteGroup -> remoteGroup.getId())
+                    .forEach(id -> identifiers.add(id));
+                snippet.getRemoteProcessGroups().stream()
+                    .flatMap(remoteGroup -> remoteGroup.getContents().getInputPorts().stream())
+                    .map(remoteInputPort -> remoteInputPort.getId())
+                    .forEach(id -> identifiers.add(id));
+                snippet.getRemoteProcessGroups().stream()
+                    .flatMap(remoteGroup -> remoteGroup.getContents().getOutputPorts().stream())
+                    .map(remoteOutputPort -> remoteOutputPort.getId())
+                    .forEach(id -> identifiers.add(id));
 
-                    @Override
-                    public FlowSnippetDTO getConfiguration() {
-                        return flowSnippet;
-                    }
-                };
-            }
-        });
+                return revisionManager.get(identifiers,
+                    () -> {
+                        final ProcessGroupStatus groupStatus = controllerFacade.getProcessGroupStatus(groupId);
+                        return dtoFactory.createFlowDto(processGroup, groupStatus, snippet, revisionManager);
+                    });
+            });
+
+        final FlowEntity flowEntity = new FlowEntity();
+        flowEntity.setFlow(flowDto);
+        return flowEntity;
+    }
+
+    private <T> ConfigurationSnapshot<T> createConfigSnapshot(final RevisionUpdate<T> update) {
+        return new ConfigurationSnapshot<>(update.getLastModification().getRevision().getVersion(), update.getComponent());
     }
 
     @Override
-    public ConfigurationSnapshot<SnippetDTO> createSnippet(final Revision revision, final SnippetDTO snippetDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<SnippetDTO>() {
-            @Override
-            public ConfigurationResult<SnippetDTO> execute() {
-                // ensure id is set
-                if (StringUtils.isBlank(snippetDTO.getId())) {
-                    snippetDTO.setId(UUID.randomUUID().toString());
-                }
+    public SnippetEntity createSnippet(final SnippetDTO snippetDTO) {
+        final String modifier = NiFiUserUtils.getNiFiUserName();
 
-                // add the snippet
-                final Snippet snippet = snippetDAO.createSnippet(snippetDTO);
-                final SnippetDTO responseSnippetDTO = dtoFactory.createSnippetDto(snippet);
-                responseSnippetDTO.setContents(snippetUtils.populateFlowSnippet(snippet, false, false));
+        // ensure id is set
+        if (StringUtils.isBlank(snippetDTO.getId())) {
+            snippetDTO.setId(UUID.randomUUID().toString());
+        }
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return true;
-                    }
+        final String groupId = snippetDTO.getParentGroupId();
+        final RevisionUpdate<SnippetDTO> snapshot = revisionManager.get(groupId, rev -> {
+            // ensure access to process group
+            final ProcessGroup parent = processGroupDAO.getProcessGroup(groupId);
+            parent.authorize(authorizer, RequestAction.WRITE);
 
-                    @Override
-                    public SnippetDTO getConfiguration() {
-                        return responseSnippetDTO;
-                    }
-                };
-            }
+            // TODO - READ access to all components in snippet
+
+            // add the component
+            final Snippet snippet = snippetDAO.createSnippet(snippetDTO);
+
+            // save the flow
+            controllerFacade.save();
+
+            final SnippetDTO dto = dtoFactory.createSnippetDto(snippet);
+            final FlowModification lastMod = new FlowModification(new Revision(0L, rev.getClientId(), snippetDTO.getId()), modifier);
+            return new StandardRevisionUpdate<SnippetDTO>(dto, lastMod);
         });
+
+        final ProcessGroup parentGroup = processGroupDAO.getProcessGroup(snapshot.getComponent().getParentGroupId());
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(parentGroup);
+        return entityFactory.createSnippetEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy);
     }
 
     @Override
-    public ConfigurationSnapshot<PortDTO> createInputPort(final Revision revision, final String groupId, final PortDTO inputPortDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<PortDTO>() {
-            @Override
-            public ConfigurationResult<PortDTO> execute() {
-                // ensure id is set
-                if (StringUtils.isBlank(inputPortDTO.getId())) {
-                    inputPortDTO.setId(UUID.randomUUID().toString());
-                }
+    public PortEntity createInputPort(final String groupId, final PortDTO inputPortDTO) {
+        final RevisionUpdate<PortDTO> snapshot = createComponent(
+            inputPortDTO,
+            () -> inputPortDAO.createPort(groupId, inputPortDTO),
+            port -> dtoFactory.createPortDto(port));
 
-                final Port inputPort = inputPortDAO.createPort(groupId, inputPortDTO);
-
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return true;
-                    }
-
-                    @Override
-                    public PortDTO getConfiguration() {
-                        return dtoFactory.createPortDto(inputPort);
-                    }
-                };
-            }
-        });
+        final Port port = inputPortDAO.getPort(inputPortDTO.getId());
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(port);
+        final PortStatusDTO status = dtoFactory.createPortStatusDto(controllerFacade.getInputPortStatus(port.getIdentifier()));
+        return entityFactory.createPortEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy, status);
     }
 
     @Override
-    public ConfigurationSnapshot<PortDTO> createOutputPort(final Revision revision, final String groupId, final PortDTO outputPortDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<PortDTO>() {
-            @Override
-            public ConfigurationResult<PortDTO> execute() {
-                // ensure id is set
-                if (StringUtils.isBlank(outputPortDTO.getId())) {
-                    outputPortDTO.setId(UUID.randomUUID().toString());
-                }
+    public PortEntity createOutputPort(final String groupId, final PortDTO outputPortDTO) {
+        final RevisionUpdate<PortDTO> snapshot = createComponent(
+            outputPortDTO,
+            () -> outputPortDAO.createPort(groupId, outputPortDTO),
+            port -> dtoFactory.createPortDto(port));
 
-                final Port outputPort = outputPortDAO.createPort(groupId, outputPortDTO);
-
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return true;
-                    }
-
-                    @Override
-                    public PortDTO getConfiguration() {
-                        return dtoFactory.createPortDto(outputPort);
-                    }
-                };
-            }
-        });
+        final Port port = outputPortDAO.getPort(outputPortDTO.getId());
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(port);
+        final PortStatusDTO status = dtoFactory.createPortStatusDto(controllerFacade.getOutputPortStatus(port.getIdentifier()));
+        return entityFactory.createPortEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy, status);
     }
 
     @Override
-    public ConfigurationSnapshot<ProcessGroupDTO> createProcessGroup(final String parentGroupId, final Revision revision, final ProcessGroupDTO processGroupDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ProcessGroupDTO>() {
-            @Override
-            public ConfigurationResult<ProcessGroupDTO> execute() {
-                // ensure id is set
-                if (StringUtils.isBlank(processGroupDTO.getId())) {
-                    processGroupDTO.setId(UUID.randomUUID().toString());
-                }
+    public ProcessGroupEntity createProcessGroup(final String parentGroupId, final ProcessGroupDTO processGroupDTO) {
+        final RevisionUpdate<ProcessGroupDTO> snapshot = createComponent(
+            processGroupDTO,
+            () -> processGroupDAO.createProcessGroup(parentGroupId, processGroupDTO),
+            processGroup -> dtoFactory.createProcessGroupDto(processGroup));
 
-                final ProcessGroup processGroup = processGroupDAO.createProcessGroup(parentGroupId, processGroupDTO);
-
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return true;
-                    }
-
-                    @Override
-                    public ProcessGroupDTO getConfiguration() {
-                        return dtoFactory.createProcessGroupDto(processGroup);
-                    }
-                };
-            }
-        });
+        final ProcessGroup processGroup = processGroupDAO.getProcessGroup(processGroupDTO.getId());
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(processGroup);
+        final ProcessGroupStatusDTO status = dtoFactory.createConciseProcessGroupStatusDto(controllerFacade.getProcessGroupStatus(processGroup.getIdentifier()));
+        return entityFactory.createProcessGroupEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy, status);
     }
 
     @Override
-    public ConfigurationSnapshot<RemoteProcessGroupDTO> createRemoteProcessGroup(final Revision revision, final String groupId, final RemoteProcessGroupDTO remoteProcessGroupDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<RemoteProcessGroupDTO>() {
-            @Override
-            public ConfigurationResult<RemoteProcessGroupDTO> execute() {
-                // ensure id is set
-                if (StringUtils.isBlank(remoteProcessGroupDTO.getId())) {
-                    remoteProcessGroupDTO.setId(UUID.randomUUID().toString());
-                }
+    public RemoteProcessGroupEntity createRemoteProcessGroup(final String groupId, final RemoteProcessGroupDTO remoteProcessGroupDTO) {
+        final RevisionUpdate<RemoteProcessGroupDTO> snapshot = createComponent(
+            remoteProcessGroupDTO,
+            () -> remoteProcessGroupDAO.createRemoteProcessGroup(groupId, remoteProcessGroupDTO),
+            remoteProcessGroup -> dtoFactory.createRemoteProcessGroupDto(remoteProcessGroup));
 
-                final RemoteProcessGroup remoteProcessGroup = remoteProcessGroupDAO.createRemoteProcessGroup(groupId, remoteProcessGroupDTO);
-
-                // save the flow
-                controllerFacade.save();
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return true;
-                    }
-
-                    @Override
-                    public RemoteProcessGroupDTO getConfiguration() {
-                        return dtoFactory.createRemoteProcessGroupDto(remoteProcessGroup);
-                    }
-                };
-            }
-        });
+        final RemoteProcessGroup remoteProcessGroup = remoteProcessGroupDAO.getRemoteProcessGroup(remoteProcessGroupDTO.getId());
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(remoteProcessGroup);
+        final RemoteProcessGroupStatusDTO status = dtoFactory.createRemoteProcessGroupStatusDto(controllerFacade.getRemoteProcessGroupStatus(remoteProcessGroup.getIdentifier()));
+        return entityFactory.createRemoteProcessGroupEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy, status);
     }
 
     @Override
-    public TemplateDTO createTemplate(String name, String description, String snippetId) {
+    public TemplateDTO createTemplate(String name, String description, String snippetId, String groupId, Optional<String> idGenerationSeed) {
         // get the specified snippet
         Snippet snippet = snippetDAO.getSnippet(snippetId);
 
@@ -1544,93 +1477,111 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         templateDTO.setSnippet(snippetUtils.populateFlowSnippet(snippet, true, true));
 
         // set the id based on the specified seed
-        final ClusterContext clusterContext = ClusterContextThreadLocal.getContext();
-        if (clusterContext != null) {
-            templateDTO.setId(UUID.nameUUIDFromBytes(clusterContext.getIdGenerationSeed().getBytes(StandardCharsets.UTF_8)).toString());
-        }
+        final String uuid = idGenerationSeed.isPresent() ? (UUID.nameUUIDFromBytes(idGenerationSeed.get().getBytes(StandardCharsets.UTF_8))).toString() : UUID.randomUUID().toString();
+        templateDTO.setId(uuid);
 
         // create the template
-        Template template = templateDAO.createTemplate(templateDTO);
+        Template template = templateDAO.createTemplate(templateDTO, groupId);
 
         return dtoFactory.createTemplateDTO(template);
     }
 
     @Override
-    public TemplateDTO importTemplate(TemplateDTO templateDTO) {
+    public TemplateDTO importTemplate(TemplateDTO templateDTO, String groupId, Optional<String> idGenerationSeed) {
         // ensure id is set
-        final ClusterContext clusterContext = ClusterContextThreadLocal.getContext();
-        if (clusterContext != null) {
-            templateDTO.setId(UUID.nameUUIDFromBytes(clusterContext.getIdGenerationSeed().getBytes(StandardCharsets.UTF_8)).toString());
-        }
+        final String uuid = idGenerationSeed.isPresent() ? (UUID.nameUUIDFromBytes(idGenerationSeed.get().getBytes(StandardCharsets.UTF_8))).toString() : UUID.randomUUID().toString();
+        templateDTO.setId(uuid);
 
         // mark the timestamp
         templateDTO.setTimestamp(new Date());
 
         // import the template
-        final Template template = templateDAO.importTemplate(templateDTO);
+        final Template template = templateDAO.importTemplate(templateDTO, groupId);
 
         // return the template dto
         return dtoFactory.createTemplateDTO(template);
     }
 
     @Override
-    public ConfigurationSnapshot<FlowSnippetDTO> createTemplateInstance(final Revision revision, final String groupId, final Double originX, final Double originY, final String templateId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<FlowSnippetDTO>() {
-            @Override
-            public ConfigurationResult<FlowSnippetDTO> execute() {
-                // instantiate the template - there is no need to make another copy of the flow snippet since the actual template
-                // was copied and this dto is only used to instantiate it's components (which as already completed)
-                final FlowSnippetDTO flowSnippet = templateDAO.instantiateTemplate(groupId, originX, originY, templateId);
+    public FlowEntity createTemplateInstance(final String groupId, final Double originX, final Double originY, final String templateId, final String idGenerationSeed) {
+        final FlowDTO flowDto = revisionManager.get(groupId, rev -> {
+            // ensure access to process group
+            final ProcessGroup processGroup = processGroupDAO.getProcessGroup(groupId);
+            processGroup.authorize(authorizer, RequestAction.WRITE);
 
-                // validate the new snippet
-                validateSnippetContents(flowSnippet, groupId);
+            // instantiate the template - there is no need to make another copy of the flow snippet since the actual template
+            // was copied and this dto is only used to instantiate it's components (which as already completed)
+            final FlowSnippetDTO snippet = templateDAO.instantiateTemplate(groupId, originX, originY, templateId, idGenerationSeed);
 
-                // save the flow
-                controllerFacade.save();
+            // TODO - READ access to all components in snippet
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
+            // validate the new snippet
+            validateSnippetContents(snippet);
 
-                    @Override
-                    public FlowSnippetDTO getConfiguration() {
-                        return flowSnippet;
-                    }
-                };
-            }
+            // save the flow
+            controllerFacade.save();
+
+            // identify all components added
+            final Set<String> identifiers = new HashSet<>();
+            snippet.getProcessors().stream()
+                .map(proc -> proc.getId())
+                .forEach(id -> identifiers.add(id));
+            snippet.getConnections().stream()
+                .map(conn -> conn.getId())
+                .forEach(id -> identifiers.add(id));
+            snippet.getInputPorts().stream()
+                .map(port -> port.getId())
+                .forEach(id -> identifiers.add(id));
+            snippet.getOutputPorts().stream()
+                .map(port -> port.getId())
+                .forEach(id -> identifiers.add(id));
+            snippet.getProcessGroups().stream()
+                .map(group -> group.getId())
+                .forEach(id -> identifiers.add(id));
+            snippet.getRemoteProcessGroups().stream()
+                .map(remoteGroup -> remoteGroup.getId())
+                .forEach(id -> identifiers.add(id));
+            snippet.getRemoteProcessGroups().stream()
+                .flatMap(remoteGroup -> remoteGroup.getContents().getInputPorts().stream())
+                .map(remoteInputPort -> remoteInputPort.getId())
+                .forEach(id -> identifiers.add(id));
+            snippet.getRemoteProcessGroups().stream()
+                .flatMap(remoteGroup -> remoteGroup.getContents().getOutputPorts().stream())
+                .map(remoteOutputPort -> remoteOutputPort.getId())
+                .forEach(id -> identifiers.add(id));
+
+            return revisionManager.get(identifiers,
+                () -> {
+                    final ProcessGroup group = processGroupDAO.getProcessGroup(groupId);
+                    final ProcessGroupStatus groupStatus = controllerFacade.getProcessGroupStatus(groupId);
+                    return dtoFactory.createFlowDto(group, groupStatus, snippet, revisionManager);
+                });
         });
+
+        final FlowEntity flowEntity = new FlowEntity();
+        flowEntity.setFlow(flowDto);
+        return flowEntity;
     }
 
     @Override
-    public ConfigurationSnapshot<Void> createArchive(final Revision revision) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                // create the archive
-                controllerFacade.createArchive();
+    public ProcessGroupEntity createArchive() {
+        try {
+            controllerFacade.createArchive();
+        } catch (IOException e) {
+            logger.error("Failed to create an archive", e);
+        }
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+        return getProcessGroup("root");
     }
 
     @Override
-    public ConfigurationSnapshot<ProcessorDTO> setProcessorAnnotationData(final Revision revision, final String processorId, final String annotationData) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ProcessorDTO>() {
+    public ProcessorEntity setProcessorAnnotationData(final Revision revision, final String processorId, final String annotationData) {
+        final NiFiUser user = NiFiUserUtils.getNiFiUser();
+        final String modifier = user.getUserName();
+
+        final RevisionUpdate<ProcessorEntity> update = revisionManager.updateRevision(new StandardRevisionClaim(revision), user, new UpdateRevisionTask<ProcessorEntity>() {
             @Override
-            public ConfigurationResult<ProcessorDTO> execute() {
+            public RevisionUpdate<ProcessorEntity> update() {
                 // create the processor config
                 final ProcessorConfigDTO config = new ProcessorConfigDTO();
                 config.setAnnotationData(annotationData);
@@ -1640,258 +1591,278 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
                 processorDTO.setId(processorId);
                 processorDTO.setConfig(config);
 
-                // get the parent group id for the specified processor
-                String groupId = controllerFacade.findProcessGroupIdForProcessor(processorId);
-
-                // ensure the parent group id was found
-                if (groupId == null) {
-                    throw new ResourceNotFoundException(String.format("Unable to locate Processor with id '%s'.", processorId));
-                }
-
                 // update the processor configuration
-                final ProcessorNode processor = processorDAO.updateProcessor(groupId, processorDTO);
+                final ProcessorNode processor = processorDAO.updateProcessor(processorDTO);
+
+                final ProcessorDTO updatedProcDto = dtoFactory.createProcessorDto(processor);
 
                 // save the flow
                 controllerFacade.save();
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
+                final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(processor);
+                final FlowModification lastMod = new FlowModification(incrementRevision(revision), modifier);
+                final ProcessorStatusDTO status = dtoFactory.createProcessorStatusDto(controllerFacade.getProcessorStatus(processor.getIdentifier()));
+                final ProcessorEntity entity = entityFactory.createProcessorEntity(updatedProcDto, dtoFactory.createRevisionDTO(lastMod), accessPolicy, status);
 
-                    @Override
-                    public ProcessorDTO getConfiguration() {
-                        return dtoFactory.createProcessorDto(processor);
-                    }
-                };
+                return new StandardRevisionUpdate<>(entity, lastMod);
             }
         });
+
+        return update.getComponent();
     }
 
     @Override
-    public ConfigurationSnapshot<ControllerServiceDTO> createControllerService(final Revision revision, final ControllerServiceDTO controllerServiceDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ControllerServiceDTO>() {
-            @Override
-            public ConfigurationResult<ControllerServiceDTO> execute() {
-                // ensure id is set
-                if (StringUtils.isBlank(controllerServiceDTO.getId())) {
-                    controllerServiceDTO.setId(UUID.randomUUID().toString());
-                }
-
+    public ControllerServiceEntity createControllerService(final String groupId, final ControllerServiceDTO controllerServiceDTO) {
+        final RevisionUpdate<ControllerServiceDTO> snapshot = createComponent(
+            controllerServiceDTO,
+            () -> {
                 // create the controller service
                 final ControllerServiceNode controllerService = controllerServiceDAO.createControllerService(controllerServiceDTO);
 
-                // save the update
-                if (properties.isClusterManager()) {
-                    clusterManager.saveControllerServices();
-                } else {
-                    controllerFacade.save();
-                }
+                // TODO - this logic should be part of the controllerServiceDAO
+                final ProcessGroup group = processGroupDAO.getProcessGroup(groupId);
+                group.addControllerService(controllerService);
+                return controllerService;
+            },
+            controllerService -> dtoFactory.createControllerServiceDto(controllerService));
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return true;
-                    }
-
-                    @Override
-                    public ControllerServiceDTO getConfiguration() {
-                        return dtoFactory.createControllerServiceDto(controllerService);
-                    }
-                };
-            }
-        });
+        final ControllerServiceNode controllerService = controllerServiceDAO.getControllerService(controllerServiceDTO.getId());
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(controllerService);
+        return entityFactory.createControllerServiceEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy);
     }
 
     @Override
-    public ConfigurationSnapshot<ControllerServiceDTO> updateControllerService(final Revision revision, final ControllerServiceDTO controllerServiceDTO) {
+    public UpdateResult<ControllerServiceEntity> updateControllerService(final Revision revision, final ControllerServiceDTO controllerServiceDTO) {
         // if controller service does not exist, then create new controller service
         if (controllerServiceDAO.hasControllerService(controllerServiceDTO.getId()) == false) {
-            return createControllerService(revision, controllerServiceDTO);
+            return new UpdateResult<>(createControllerService(controllerServiceDTO.getParentGroupId(), controllerServiceDTO), true);
         }
 
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ControllerServiceDTO>() {
-            @Override
-            public ConfigurationResult<ControllerServiceDTO> execute() {
-                final ControllerServiceNode controllerService = controllerServiceDAO.updateControllerService(controllerServiceDTO);
+        // get the component, ensure we have access to it, and perform the update request
+        final ControllerServiceNode controllerService = controllerServiceDAO.getControllerService(controllerServiceDTO.getId());
+        final RevisionUpdate<ControllerServiceDTO> snapshot = updateComponent(revision,
+            controllerService,
+            () -> controllerServiceDAO.updateControllerService(controllerServiceDTO),
+            cs -> dtoFactory.createControllerServiceDto(cs));
 
-                // save the update
-                if (properties.isClusterManager()) {
-                    clusterManager.saveControllerServices();
-                } else {
-                    controllerFacade.save();
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(controllerService);
+        return new UpdateResult<>(entityFactory.createControllerServiceEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy), false);
+    }
+
+    @Override
+    public ControllerServiceReferencingComponentsEntity updateControllerServiceReferencingComponents(
+        final Map<String, Revision> referenceRevisions, final String controllerServiceId, final ScheduledState scheduledState, final ControllerServiceState controllerServiceState) {
+
+        final RevisionClaim claim = new StandardRevisionClaim(referenceRevisions.values());
+
+        final NiFiUser user = NiFiUserUtils.getNiFiUser();
+        final RevisionUpdate<ControllerServiceReferencingComponentsEntity> update = revisionManager.updateRevision(claim, user,
+            new UpdateRevisionTask<ControllerServiceReferencingComponentsEntity>() {
+                @Override
+                public RevisionUpdate<ControllerServiceReferencingComponentsEntity> update() {
+                    final ControllerServiceNode controllerService = controllerServiceDAO.getControllerService(controllerServiceId);
+                    final ControllerServiceReference reference = controllerService.getReferences();
+                    for (final ConfiguredComponent component : reference.getReferencingComponents()) {
+                        if (component instanceof Authorizable) {
+                            // ensure we can write the referencing components
+                            ((Authorizable) component).authorize(authorizer, RequestAction.WRITE);
+                        }
+                    }
+
+                    final Set<ConfiguredComponent> updated = controllerServiceDAO.updateControllerServiceReferencingComponents(controllerServiceId, scheduledState, controllerServiceState);
+                    final ControllerServiceReference updatedReference = controllerServiceDAO.getControllerService(controllerServiceId).getReferences();
+
+                    final Map<String, Revision> updatedRevisions = new HashMap<>();
+                        for (final Revision refRevision : referenceRevisions.values()) {
+                            updatedRevisions.put(refRevision.getComponentId(), refRevision);
+                        }
+
+                    for (final ConfiguredComponent component : updated) {
+                        final Revision currentRevision = revisionManager.getRevision(component.getIdentifier());
+                        final Revision updatedRevision = incrementRevision(currentRevision);
+                        updatedRevisions.put(component.getIdentifier(), updatedRevision);
+                    }
+
+                    final ControllerServiceReferencingComponentsEntity entity = createControllerServiceReferencingComponentsEntity(updatedReference, updatedRevisions);
+                    return new StandardRevisionUpdate<>(entity, null, new HashSet<>(updatedRevisions.values()));
+                }
+            });
+
+        return update.getComponent();
+    }
+
+    /**
+     * Finds the identifiers for all components referencing a ControllerService.
+     *
+     * @param reference         ControllerServiceReference
+     * @param referencingIds    Collection of identifiers
+     * @param visited           ControllerServices we've already visited
+     */
+    private void findControllerServiceReferencingComponentIdentifiers(final ControllerServiceReference reference, final Set<String> referencingIds, final Set<ControllerServiceNode> visited) {
+        for (final ConfiguredComponent component : reference.getReferencingComponents()) {
+            referencingIds.add(component.getIdentifier());
+
+            // if this is a ControllerService consider it's referencing components
+            if (component instanceof ControllerServiceNode) {
+                final ControllerServiceNode node = (ControllerServiceNode) component;
+                if (!visited.contains(node)) {
+                    findControllerServiceReferencingComponentIdentifiers(node.getReferences(), referencingIds, visited);
+                }
+                visited.add(node);
+            }
+        }
+    }
+
+    /**
+     * Creates entities for components referencing a ControllerService using their current revision.
+     *
+     * @param reference         ControllerServiceReference
+     * @return                  The entity
+     */
+    private ControllerServiceReferencingComponentsEntity createControllerServiceReferencingComponentsEntity(final ControllerServiceReference reference) {
+        final Set<String> referencingIds = new HashSet<>();
+        final Set<ControllerServiceNode> visited = new HashSet<>();
+        visited.add(reference.getReferencedComponent());
+        findControllerServiceReferencingComponentIdentifiers(reference, referencingIds, visited);
+
+        return revisionManager.get(referencingIds, () -> {
+            final Map<String, Revision> referencingRevisions = new HashMap<>();
+            for (final ConfiguredComponent component : reference.getReferencingComponents()) {
+                referencingRevisions.put(component.getIdentifier(), revisionManager.getRevision(component.getIdentifier()));
+            }
+            return createControllerServiceReferencingComponentsEntity(reference, referencingRevisions);
+        });
+    }
+
+    /**
+     * Creates entities for components referencing a ControllerService using the specified revisions.
+     *
+     * @param reference         ControllerServiceReference
+     * @param revisions         The revisions
+     * @return                  The entity
+     */
+    private ControllerServiceReferencingComponentsEntity createControllerServiceReferencingComponentsEntity(
+        final ControllerServiceReference reference, final Map<String, Revision> revisions) {
+        return createControllerServiceReferencingComponentsEntity(reference, revisions, new HashSet<>());
+    }
+
+    /**
+     * Creates entities for compnents referencing a ControllerServcie using the specified revisions.
+     *
+     * @param reference         ControllerServiceReference
+     * @param revisions         The revisions
+     * @param visited           Which services we've already considered (in case of cycle)
+     * @return                  The entity
+     */
+    private ControllerServiceReferencingComponentsEntity createControllerServiceReferencingComponentsEntity(
+        final ControllerServiceReference reference, final Map<String, Revision> revisions, final Set<ControllerServiceNode> visited) {
+
+        final String modifier = NiFiUserUtils.getNiFiUserName();
+        final Set<ConfiguredComponent> referencingComponents = reference.getReferencingComponents();
+
+        final Set<ControllerServiceReferencingComponentEntity> componentEntities = new HashSet<>();
+        for (final ConfiguredComponent refComponent : referencingComponents) {
+            AccessPolicyDTO accessPolicy = null;
+            if (refComponent instanceof Authorizable) {
+                accessPolicy = dtoFactory.createAccessPolicyDto((Authorizable) refComponent);
+            }
+
+            final Revision revision = revisions.get(refComponent.getIdentifier());
+            final FlowModification flowMod = new FlowModification(revision, modifier);
+            final RevisionDTO revisionDto = dtoFactory.createRevisionDTO(flowMod);
+            final ControllerServiceReferencingComponentDTO dto = dtoFactory.createControllerServiceReferencingComponentDTO(refComponent);
+
+            if (refComponent instanceof ControllerServiceNode) {
+                final ControllerServiceNode node = (ControllerServiceNode) refComponent;
+
+                // indicate if we've hit a cycle
+                dto.setReferenceCycle(visited.contains(node));
+
+                // if we haven't encountered this service before include it's referencing components
+                if (!dto.getReferenceCycle()) {
+                    final ControllerServiceReferencingComponentsEntity references = createControllerServiceReferencingComponentsEntity(node.getReferences(), revisions, visited);
+                    dto.setReferencingComponents(references.getControllerServiceReferencingComponents());
                 }
 
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerServiceDTO getConfiguration() {
-                        return dtoFactory.createControllerServiceDto(controllerService);
-                    }
-                };
+                // mark node as visited
+                visited.add(node);
             }
+
+            componentEntities.add(entityFactory.createControllerServiceReferencingComponentEntity(dto, revisionDto, accessPolicy));
+        }
+
+        final ControllerServiceReferencingComponentsEntity entity = new ControllerServiceReferencingComponentsEntity();
+        entity.setControllerServiceReferencingComponents(componentEntities);
+        return entity;
+    }
+
+    @Override
+    public ControllerServiceEntity deleteControllerService(final Revision revision, final String controllerServiceId) {
+        final ControllerServiceNode controllerService = controllerServiceDAO.getControllerService(controllerServiceId);
+        final ControllerServiceDTO snapshot = deleteComponent(
+            revision,
+            controllerService,
+            () -> controllerServiceDAO.deleteControllerService(controllerServiceId),
+            dtoFactory.createControllerServiceDto(controllerService));
+
+        return entityFactory.createControllerServiceEntity(snapshot, null, null);
+    }
+
+
+    @Override
+    public ReportingTaskEntity createReportingTask(final ReportingTaskDTO reportingTaskDTO) {
+        final String modifier = NiFiUserUtils.getNiFiUserName();
+
+        // ensure id is set
+        if (StringUtils.isBlank(reportingTaskDTO.getId())) {
+            reportingTaskDTO.setId(UUID.randomUUID().toString());
+        }
+
+        return revisionManager.get(controllerFacade.getInstanceId(), rev -> {
+            // ensure access to the controller
+            controllerFacade.authorize(authorizer, RequestAction.WRITE);
+
+            // create the reporting task
+            final ReportingTaskNode reportingTask = reportingTaskDAO.createReportingTask(reportingTaskDTO);
+
+            // save the update
+            controllerFacade.save();
+
+            final ReportingTaskDTO dto = dtoFactory.createReportingTaskDto(reportingTask);
+            final FlowModification lastMod = new FlowModification(new Revision(0L, rev.getClientId(), dto.getId()), modifier);
+            final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(reportingTask);
+            return entityFactory.createReportingTaskEntity(dto, dtoFactory.createRevisionDTO(lastMod), accessPolicy);
         });
     }
 
     @Override
-    public ConfigurationSnapshot<Set<ControllerServiceReferencingComponentDTO>> updateControllerServiceReferencingComponents(
-            final Revision revision,
-            final String controllerServiceId,
-            final org.apache.nifi.controller.ScheduledState scheduledState,
-            final org.apache.nifi.controller.service.ControllerServiceState controllerServiceState) {
-
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Set<ControllerServiceReferencingComponentDTO>>() {
-            @Override
-            public ConfigurationResult<Set<ControllerServiceReferencingComponentDTO>> execute() {
-                final ControllerServiceReference reference = controllerServiceDAO.updateControllerServiceReferencingComponents(controllerServiceId, scheduledState, controllerServiceState);
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public Set<ControllerServiceReferencingComponentDTO> getConfiguration() {
-                        return dtoFactory.createControllerServiceReferencingComponentsDto(reference);
-                    }
-                };
-            }
-        });
-    }
-
-    @Override
-    public ConfigurationSnapshot<Void> deleteControllerService(final Revision revision, final String controllerServiceId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                // delete the label
-                controllerServiceDAO.deleteControllerService(controllerServiceId);
-
-                // save the update
-                if (properties.isClusterManager()) {
-                    clusterManager.saveControllerServices();
-                } else {
-                    controllerFacade.save();
-                }
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
-    }
-
-    @Override
-    public ConfigurationSnapshot<ReportingTaskDTO> createReportingTask(final Revision revision, final ReportingTaskDTO reportingTaskDTO) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ReportingTaskDTO>() {
-            @Override
-            public ConfigurationResult<ReportingTaskDTO> execute() {
-                // ensure id is set
-                if (StringUtils.isBlank(reportingTaskDTO.getId())) {
-                    reportingTaskDTO.setId(UUID.randomUUID().toString());
-                }
-
-                // create the reporting
-                final ReportingTaskNode reportingTask = reportingTaskDAO.createReportingTask(reportingTaskDTO);
-
-                // save the update
-                if (properties.isClusterManager()) {
-                    clusterManager.saveReportingTasks();
-                } else {
-                    controllerFacade.save();
-                }
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return true;
-                    }
-
-                    @Override
-                    public ReportingTaskDTO getConfiguration() {
-                        return dtoFactory.createReportingTaskDto(reportingTask);
-                    }
-                };
-            }
-        });
-    }
-
-    @Override
-    public ConfigurationSnapshot<ReportingTaskDTO> updateReportingTask(final Revision revision, final ReportingTaskDTO reportingTaskDTO) {
+    public UpdateResult<ReportingTaskEntity> updateReportingTask(final Revision revision, final ReportingTaskDTO reportingTaskDTO) {
         // if reporting task does not exist, then create new reporting task
         if (reportingTaskDAO.hasReportingTask(reportingTaskDTO.getId()) == false) {
-            return createReportingTask(revision, reportingTaskDTO);
+            return new UpdateResult<>(createReportingTask(reportingTaskDTO), true);
         }
 
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<ReportingTaskDTO>() {
-            @Override
-            public ConfigurationResult<ReportingTaskDTO> execute() {
-                final ReportingTaskNode reportingTask = reportingTaskDAO.updateReportingTask(reportingTaskDTO);
+        // get the component, ensure we have access to it, and perform the update request
+        final ReportingTaskNode reportingTask = reportingTaskDAO.getReportingTask(reportingTaskDTO.getId());
+        final RevisionUpdate<ReportingTaskDTO> snapshot = updateComponent(revision,
+            reportingTask,
+            () -> reportingTaskDAO.updateReportingTask(reportingTaskDTO),
+            rt -> dtoFactory.createReportingTaskDto(rt));
 
-                // save the update
-                if (properties.isClusterManager()) {
-                    clusterManager.saveReportingTasks();
-                } else {
-                    controllerFacade.save();
-                }
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ReportingTaskDTO getConfiguration() {
-                        return dtoFactory.createReportingTaskDto(reportingTask);
-                    }
-                };
-            }
-        });
+        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(reportingTask);
+        return new UpdateResult<>(entityFactory.createReportingTaskEntity(snapshot.getComponent(), dtoFactory.createRevisionDTO(snapshot.getLastModification()), accessPolicy), false);
     }
 
     @Override
-    public ConfigurationSnapshot<Void> deleteReportingTask(final Revision revision, final String reportingTaskId) {
-        return optimisticLockingManager.configureFlow(revision, new ConfigurationRequest<Void>() {
-            @Override
-            public ConfigurationResult<Void> execute() {
-                // delete the label
-                reportingTaskDAO.deleteReportingTask(reportingTaskId);
+    public ReportingTaskEntity deleteReportingTask(final Revision revision, final String reportingTaskId) {
+        final ReportingTaskNode reportingTask = reportingTaskDAO.getReportingTask(reportingTaskId);
+        final ReportingTaskDTO snapshot = deleteComponent(
+            revision,
+            reportingTask,
+            () -> reportingTaskDAO.deleteReportingTask(reportingTaskId),
+            dtoFactory.createReportingTaskDto(reportingTask));
 
-                // save the update
-                if (properties.isClusterManager()) {
-                    clusterManager.saveReportingTasks();
-                } else {
-                    controllerFacade.save();
-                }
-
-                return new ConfigurationResult() {
-                    @Override
-                    public boolean isNew() {
-                        return false;
-                    }
-
-                    @Override
-                    public ControllerConfigurationDTO getConfiguration() {
-                        return null;
-                    }
-                };
-            }
-        });
+        return entityFactory.createReportingTaskEntity(snapshot, null, null);
     }
 
     @Override
@@ -1922,120 +1893,6 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public void invalidateUser(String userId) {
-        try {
-            userService.invalidateUserAccount(userId);
-        } catch (final AccountNotFoundException anfe) {
-            // ignore
-        }
-    }
-
-    @Override
-    public void invalidateUserGroup(String userGroup, Set<String> userIds) {
-        // invalidates any user currently associated with this group
-        if (userGroup != null) {
-            userService.invalidateUserGroupAccount(userGroup);
-        }
-
-        // invalidates any user that will be associated with this group
-        if (userIds != null) {
-            for (final String userId : userIds) {
-                invalidateUser(userId);
-            }
-        }
-    }
-
-    @Override
-    public UserDTO createUser() {
-        NewAccountRequest newAccountRequest = NiFiUserUtils.getNewAccountRequest();
-
-        // log the new user account request
-        logger.info("Requesting new user account for " + newAccountRequest.getUsername());
-
-        // get the justification
-        String justification = newAccountRequest.getJustification();
-        if (justification == null) {
-            justification = StringUtils.EMPTY;
-        }
-
-        // create the pending user account
-        return dtoFactory.createUserDTO(userService.createPendingUserAccount(newAccountRequest.getUsername(), justification));
-    }
-
-    @Override
-    public UserDTO updateUser(UserDTO userDto) {
-        NiFiUser user;
-
-        // attempt to parse the user id
-        final String id = userDto.getId();
-
-        // determine the authorities that have been specified in the request
-        Set<Authority> authorities = null;
-        if (userDto.getAuthorities() != null) {
-            authorities = Authority.convertRawAuthorities(userDto.getAuthorities());
-        }
-
-        // if the account status isn't specified or isn't changing
-        final AccountStatus accountStatus = AccountStatus.valueOfStatus(userDto.getStatus());
-        if (accountStatus == null || AccountStatus.ACTIVE.equals(accountStatus)) {
-            // ensure that authorities have been specified (may be empty, but not null)
-            if (authorities == null) {
-                throw new IllegalArgumentException("Authorities must be specified when updating an account.");
-            }
-
-            // update the user account
-            user = userService.update(id, authorities);
-        } else if (AccountStatus.DISABLED.equals(accountStatus)) {
-            // disable the account
-            user = userService.disable(id);
-        } else {
-            throw new IllegalArgumentException("Accounts cannot be marked pending.");
-        }
-
-        return dtoFactory.createUserDTO(user);
-    }
-
-    @Override
-    public void deleteUser(String userId) {
-        userService.deleteUser(userId);
-    }
-
-    @Override
-    public UserGroupDTO updateUserGroup(final UserGroupDTO userGroupDTO) {
-        NiFiUserGroup userGroup;
-
-        // convert the authorities
-        Set<Authority> authorities = null;
-        if (userGroupDTO.getAuthorities() != null) {
-            authorities = Authority.convertRawAuthorities(userGroupDTO.getAuthorities());
-        }
-
-        final AccountStatus accountStatus = AccountStatus.valueOfStatus(userGroupDTO.getStatus());
-        if (accountStatus == null || AccountStatus.ACTIVE.equals(accountStatus)) {
-            // update the user group
-            userGroup = userService.updateGroup(userGroupDTO.getGroup(), userGroupDTO.getUserIds(), authorities);
-        } else if (AccountStatus.DISABLED.equals(accountStatus)) {
-            // disable the accounts
-            userGroup = userService.disableGroup(userGroupDTO.getGroup());
-        } else {
-            throw new IllegalArgumentException("Accounts cannot be marked pending.");
-        }
-
-        // generate the user group dto
-        return dtoFactory.createUserGroupDTO(userGroup);
-    }
-
-    @Override
-    public void removeUserFromGroup(String userId) {
-        userService.ungroupUser(userId);
-    }
-
-    @Override
-    public void removeUserGroup(String userGroup) {
-        userService.ungroup(userGroup);
-    }
-
-    @Override
     public ProvenanceDTO submitProvenance(ProvenanceDTO query) {
         return controllerFacade.submitProvenance(query);
     }
@@ -2063,10 +1920,6 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     // -----------------------------------------
     // Read Operations
     // -----------------------------------------
-    @Override
-    public RevisionDTO getRevision() {
-        return dtoFactory.createRevisionDTO(optimisticLockingManager.getLastModification());
-    }
 
     @Override
     public SearchResultsDTO searchController(String query) {
@@ -2074,8 +1927,8 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public DownloadableContent getContent(String groupId, String connectionId, String flowFileUuid, String uri) {
-        return connectionDAO.getContent(groupId, connectionId, flowFileUuid, uri);
+    public DownloadableContent getContent(String connectionId, String flowFileUuid, String uri) {
+        return connectionDAO.getContent(connectionId, flowFileUuid, uri);
     }
 
     @Override
@@ -2105,193 +1958,123 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
 
     @Override
     public ProcessGroupStatusDTO getProcessGroupStatus(String groupId) {
-        ProcessGroupStatusDTO statusReport;
-        if (properties.isClusterManager()) {
-            final ProcessGroupStatus mergedProcessGroupStatus = clusterManager.getProcessGroupStatus(groupId);
-            if (mergedProcessGroupStatus == null) {
-                throw new ResourceNotFoundException(String.format("Unable to find status for process group %s.", groupId));
-            }
-            statusReport = dtoFactory.createProcessGroupStatusDto(clusterManager.getBulletinRepository(), mergedProcessGroupStatus);
-        } else {
-            statusReport = controllerFacade.getProcessGroupStatus(groupId);
-        }
-        return statusReport;
+        return dtoFactory.createProcessGroupStatusDto(controllerFacade.getProcessGroupStatus(groupId));
     }
 
     @Override
     public ControllerStatusDTO getControllerStatus() {
-        final ControllerStatusDTO controllerStatus;
-
-        if (properties.isClusterManager()) {
-            final Set<Node> connectedNodes = clusterManager.getNodes(Node.Status.CONNECTED);
-
-            if (connectedNodes.isEmpty()) {
-                throw new NoConnectedNodesException();
-            }
-
-            int activeThreadCount = 0;
-            long totalFlowFileObjectCount = 0;
-            long totalFlowFileByteCount = 0;
-            for (final Node node : connectedNodes) {
-                final HeartbeatPayload nodeHeartbeatPayload = node.getHeartbeatPayload();
-                if (nodeHeartbeatPayload == null) {
-                    continue;
-                }
-
-                activeThreadCount += nodeHeartbeatPayload.getActiveThreadCount();
-                totalFlowFileObjectCount += nodeHeartbeatPayload.getTotalFlowFileCount();
-                totalFlowFileByteCount += nodeHeartbeatPayload.getTotalFlowFileBytes();
-            }
-
-            controllerStatus = new ControllerStatusDTO();
-            controllerStatus.setActiveThreadCount(activeThreadCount);
-            controllerStatus.setQueued(FormatUtils.formatCount(totalFlowFileObjectCount) + " / " + FormatUtils.formatDataSize(totalFlowFileByteCount));
-
-            final int numNodes = clusterManager.getNodeIds().size();
-            controllerStatus.setConnectedNodes(connectedNodes.size() + " / " + numNodes);
-
-            // get the bulletins for the controller
-            final BulletinRepository bulletinRepository = clusterManager.getBulletinRepository();
-            controllerStatus.setBulletins(dtoFactory.createBulletinDtos(bulletinRepository.findBulletinsForController()));
-
-            // get the controller service bulletins
-            final BulletinQuery controllerServiceQuery = new BulletinQuery.Builder().sourceType(ComponentType.CONTROLLER_SERVICE).build();
-            controllerStatus.setControllerServiceBulletins(dtoFactory.createBulletinDtos(bulletinRepository.findBulletins(controllerServiceQuery)));
-
-            // get the reporting task bulletins
-            final BulletinQuery reportingTaskQuery = new BulletinQuery.Builder().sourceType(ComponentType.REPORTING_TASK).build();
-            controllerStatus.setReportingTaskBulletins(dtoFactory.createBulletinDtos(bulletinRepository.findBulletins(reportingTaskQuery)));
-
-            // get the component counts by extracting them from the roots' group status
-            final ProcessGroupStatus status = clusterManager.getProcessGroupStatus("root");
-            if (status != null) {
-                final ProcessGroupCounts counts = extractProcessGroupCounts(status);
-                controllerStatus.setRunningCount(counts.getRunningCount());
-                controllerStatus.setStoppedCount(counts.getStoppedCount());
-                controllerStatus.setInvalidCount(counts.getInvalidCount());
-                controllerStatus.setDisabledCount(counts.getDisabledCount());
-                controllerStatus.setActiveRemotePortCount(counts.getActiveRemotePortCount());
-                controllerStatus.setInactiveRemotePortCount(counts.getInactiveRemotePortCount());
-            }
-        } else {
-            // get the controller status
-            controllerStatus = controllerFacade.getControllerStatus();
-        }
-
-        // determine if there are any pending user accounts - only include if appropriate
-        if (NiFiUserUtils.getAuthorities().contains(Authority.ROLE_ADMIN.toString())) {
-            controllerStatus.setHasPendingAccounts(userService.hasPendingUserAccount());
-        }
-
-        return controllerStatus;
+        return controllerFacade.getControllerStatus();
     }
 
     @Override
-    public ComponentStateDTO getProcessorState(String groupId, String processorId) {
-        final StateMap clusterState = isClustered() ? processorDAO.getState(groupId, processorId, Scope.CLUSTER) : null;
-        final StateMap localState = processorDAO.getState(groupId, processorId, Scope.LOCAL);
+    public ComponentStateDTO getProcessorState(String processorId) {
+        return revisionManager.get(processorId, new ReadOnlyRevisionCallback<ComponentStateDTO>() {
+            @Override
+            public ComponentStateDTO withRevision(Revision revision) {
+                final StateMap clusterState = isClustered() ? processorDAO.getState(processorId, Scope.CLUSTER) : null;
+                final StateMap localState = processorDAO.getState(processorId, Scope.LOCAL);
 
-        // processor will be non null as it was already found when getting the state
-        final ProcessorNode processor = processorDAO.getProcessor(groupId, processorId);
-        return dtoFactory.createComponentStateDTO(processorId, processor.getProcessor().getClass(), localState, clusterState);
+                // processor will be non null as it was already found when getting the state
+                final ProcessorNode processor = processorDAO.getProcessor(processorId);
+                return dtoFactory.createComponentStateDTO(processorId, processor.getProcessor().getClass(), localState, clusterState);
+            }
+        });
     }
 
     @Override
     public ComponentStateDTO getControllerServiceState(String controllerServiceId) {
-        final StateMap clusterState = isClustered() ? controllerServiceDAO.getState(controllerServiceId, Scope.CLUSTER) : null;
-        final StateMap localState = controllerServiceDAO.getState(controllerServiceId, Scope.LOCAL);
+        return revisionManager.get(controllerServiceId, new ReadOnlyRevisionCallback<ComponentStateDTO>() {
+            @Override
+            public ComponentStateDTO withRevision(Revision revision) {
+                final StateMap clusterState = isClustered() ? controllerServiceDAO.getState(controllerServiceId, Scope.CLUSTER) : null;
+                final StateMap localState = controllerServiceDAO.getState(controllerServiceId, Scope.LOCAL);
 
-        // controller service will be non null as it was already found when getting the state
-        final ControllerServiceNode controllerService = controllerServiceDAO.getControllerService(controllerServiceId);
-        return dtoFactory.createComponentStateDTO(controllerServiceId, controllerService.getControllerServiceImplementation().getClass(), localState, clusterState);
+                // controller service will be non null as it was already found when getting the state
+                final ControllerServiceNode controllerService = controllerServiceDAO.getControllerService(controllerServiceId);
+                return dtoFactory.createComponentStateDTO(controllerServiceId, controllerService.getControllerServiceImplementation().getClass(), localState, clusterState);
+            }
+        });
     }
 
     @Override
     public ComponentStateDTO getReportingTaskState(String reportingTaskId) {
-        final StateMap clusterState = isClustered() ? reportingTaskDAO.getState(reportingTaskId, Scope.CLUSTER) : null;
-        final StateMap localState = reportingTaskDAO.getState(reportingTaskId, Scope.LOCAL);
+        return revisionManager.get(reportingTaskId, new ReadOnlyRevisionCallback<ComponentStateDTO>() {
+            @Override
+            public ComponentStateDTO withRevision(Revision revision) {
+                final StateMap clusterState = isClustered() ? reportingTaskDAO.getState(reportingTaskId, Scope.CLUSTER) : null;
+                final StateMap localState = reportingTaskDAO.getState(reportingTaskId, Scope.LOCAL);
 
-        // reporting task will be non null as it was already found when getting the state
-        final ReportingTaskNode reportingTask = reportingTaskDAO.getReportingTask(reportingTaskId);
-        return dtoFactory.createComponentStateDTO(reportingTaskId, reportingTask.getReportingTask().getClass(), localState, clusterState);
+                // reporting task will be non null as it was already found when getting the state
+                final ReportingTaskNode reportingTask = reportingTaskDAO.getReportingTask(reportingTaskId);
+                return dtoFactory.createComponentStateDTO(reportingTaskId, reportingTask.getReportingTask().getClass(), localState, clusterState);
+            }
+        });
     }
 
     @Override
     public CountersDTO getCounters() {
-        if (properties.isClusterManager()) {
-            final Map<String, CounterDTO> mergedCountersMap = new HashMap<>();
-            final Set<Node> connectedNodes = clusterManager.getNodes(Node.Status.CONNECTED);
-
-            if (connectedNodes.isEmpty()) {
-                throw new NoConnectedNodesException();
-            }
-
-            for (final Node node : connectedNodes) {
-                final HeartbeatPayload nodeHeartbeatPayload = node.getHeartbeatPayload();
-                if (nodeHeartbeatPayload == null) {
-                    continue;
-                }
-                final List<Counter> nodeCounters = node.getHeartbeatPayload().getCounters();
-                if (nodeCounters == null) {
-                    continue;
-                }
-
-                // for each node, add its counter values to the aggregate values
-                for (final Counter nodeCounter : nodeCounters) {
-                    final CounterDTO mergedCounter = mergedCountersMap.get(nodeCounter.getIdentifier());
-
-                    // either create a new aggregate counter or update the aggregate counter
-                    if (mergedCounter == null) {
-                        // add new counter
-                        mergedCountersMap.put(nodeCounter.getIdentifier(), dtoFactory.createCounterDto(nodeCounter));
-                    } else {
-                        // update aggregate counter
-                        mergedCounter.setValueCount(mergedCounter.getValueCount() + nodeCounter.getValue());
-                        mergedCounter.setValue(FormatUtils.formatCount(mergedCounter.getValueCount()));
-                    }
-                }
-            }
-
-            final CountersDTO mergedCounters = new CountersDTO();
-            mergedCounters.setGenerated(new Date());
-            mergedCounters.setCounters(mergedCountersMap.values());
-            return mergedCounters;
-        } else {
-            List<Counter> counters = controllerFacade.getCounters();
-            Set<CounterDTO> counterDTOs = new LinkedHashSet<>(counters.size());
-            for (Counter counter : counters) {
-                counterDTOs.add(dtoFactory.createCounterDto(counter));
-            }
-            return dtoFactory.createCountersDto(counterDTOs);
+        List<Counter> counters = controllerFacade.getCounters();
+        Set<CounterDTO> counterDTOs = new LinkedHashSet<>(counters.size());
+        for (Counter counter : counters) {
+            counterDTOs.add(dtoFactory.createCounterDto(counter));
         }
 
+        final CountersSnapshotDTO snapshotDto = dtoFactory.createCountersDto(counterDTOs);
+        final CountersDTO countersDto = new CountersDTO();
+        countersDto.setAggregateSnapshot(snapshotDto);
+
+        return countersDto;
     }
 
     @Override
-    public Set<ConnectionDTO> getConnections(String groupId) {
-        Set<ConnectionDTO> connectionDtos = new LinkedHashSet<>();
-        for (Connection connection : connectionDAO.getConnections(groupId)) {
-            connectionDtos.add(dtoFactory.createConnectionDto(connection));
-        }
-        return connectionDtos;
+    public Set<ConnectionEntity> getConnections(String groupId) {
+        return revisionManager.get(groupId, rev -> {
+            final ProcessGroup group = processGroupDAO.getProcessGroup(groupId);
+            group.authorize(authorizer, RequestAction.READ);
+
+            final Set<Connection> connections = connectionDAO.getConnections(groupId);
+            final Set<String> connectionIds = connections.stream().map(connection -> connection.getIdentifier()).collect(Collectors.toSet());
+            return revisionManager.get(connectionIds, () -> {
+                return connections.stream()
+                    .map(connection -> {
+                        final RevisionDTO revision = dtoFactory.createRevisionDTO(revisionManager.getRevision(connection.getIdentifier()));
+                        final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(connection);
+                        final ConnectionStatusDTO status = dtoFactory.createConnectionStatusDto(controllerFacade.getConnectionStatus(connection.getIdentifier()));
+                        return entityFactory.createConnectionEntity(dtoFactory.createConnectionDto(connection), revision, accessPolicy, status);
+                    })
+                    .collect(Collectors.toSet());
+            });
+        });
     }
 
     @Override
-    public ConnectionDTO getConnection(String groupId, String connectionId) {
-        return dtoFactory.createConnectionDto(connectionDAO.getConnection(groupId, connectionId));
+    public ConnectionEntity getConnection(String connectionId) {
+        return revisionManager.get(connectionId, rev -> {
+            final Connection connection = connectionDAO.getConnection(connectionId);
+            connection.authorize(authorizer, RequestAction.READ);
+
+            final RevisionDTO revision = dtoFactory.createRevisionDTO(rev);
+            final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(connection);
+            final ConnectionStatusDTO status = dtoFactory.createConnectionStatusDto(controllerFacade.getConnectionStatus(connectionId));
+            return entityFactory.createConnectionEntity(dtoFactory.createConnectionDto(connectionDAO.getConnection(connectionId)), revision, accessPolicy, status);
+        });
     }
 
     @Override
-    public DropRequestDTO getFlowFileDropRequest(String groupId, String connectionId, String dropRequestId) {
-        return dtoFactory.createDropRequestDTO(connectionDAO.getFlowFileDropRequest(groupId, connectionId, dropRequestId));
+    public DropRequestDTO getFlowFileDropRequest(String connectionId, String dropRequestId) {
+        final Connection connection = connectionDAO.getConnection(connectionId);
+        connection.authorize(authorizer, RequestAction.WRITE);
+        return dtoFactory.createDropRequestDTO(connectionDAO.getFlowFileDropRequest(connectionId, dropRequestId));
     }
 
     @Override
-    public ListingRequestDTO getFlowFileListingRequest(String groupId, String connectionId, String listingRequestId) {
-        final ListingRequestDTO listRequest = dtoFactory.createListingRequestDTO(connectionDAO.getFlowFileListingRequest(groupId, connectionId, listingRequestId));
+    public ListingRequestDTO getFlowFileListingRequest(String connectionId, String listingRequestId) {
+        final Connection connection = connectionDAO.getConnection(connectionId);
+        connection.authorize(authorizer, RequestAction.WRITE);
+
+        final ListingRequestDTO listRequest = dtoFactory.createListingRequestDTO(connectionDAO.getFlowFileListingRequest(connectionId, listingRequestId));
 
         // include whether the source and destination are running
-        final Connection connection = connectionDAO.getConnection(groupId, connectionId);
         if (connection.getSource() != null) {
             listRequest.setSourceRunning(connection.getSource().isRunning());
         }
@@ -2303,22 +2086,39 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public FlowFileDTO getFlowFile(String groupId, String connectionId, String flowFileUuid) {
-        return dtoFactory.createFlowFileDTO(connectionDAO.getFlowFile(groupId, connectionId, flowFileUuid));
+    public FlowFileDTO getFlowFile(String connectionId, String flowFileUuid) {
+        final Connection connection = connectionDAO.getConnection(connectionId);
+        connection.authorize(authorizer, RequestAction.WRITE);
+        return dtoFactory.createFlowFileDTO(connectionDAO.getFlowFile(connectionId, flowFileUuid));
     }
 
     @Override
-    public StatusHistoryDTO getConnectionStatusHistory(String groupId, String connectionId) {
-        return controllerFacade.getConnectionStatusHistory(groupId, connectionId);
+    public ConnectionStatusDTO getConnectionStatus(String connectionId) {
+        return revisionManager.get(connectionId, rev -> dtoFactory.createConnectionStatusDto(controllerFacade.getConnectionStatus(connectionId)));
     }
 
     @Override
-    public Set<ProcessorDTO> getProcessors(String groupId) {
-        Set<ProcessorDTO> processorDtos = new LinkedHashSet<>();
-        for (ProcessorNode processor : processorDAO.getProcessors(groupId)) {
-            processorDtos.add(dtoFactory.createProcessorDto(processor));
-        }
-        return processorDtos;
+    public StatusHistoryDTO getConnectionStatusHistory(String connectionId) {
+        return revisionManager.get(connectionId, rev -> controllerFacade.getConnectionStatusHistory(connectionId));
+    }
+
+    @Override
+    public Set<ProcessorEntity> getProcessors(String groupId) {
+        final ProcessGroup group = processGroupDAO.getProcessGroup(groupId);
+        group.authorize(authorizer, RequestAction.READ);
+
+        final Set<ProcessorNode> processors = processorDAO.getProcessors(groupId);
+        final Set<String> ids = processors.stream().map(proc -> proc.getIdentifier()).collect(Collectors.toSet());
+        return revisionManager.get(ids, () -> {
+            return processors.stream()
+                .map(processor -> {
+                    final RevisionDTO revision = dtoFactory.createRevisionDTO(revisionManager.getRevision(processor.getIdentifier()));
+                    final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(processor);
+                    final ProcessorStatusDTO status = dtoFactory.createProcessorStatusDto(controllerFacade.getProcessorStatus(processor.getIdentifier()));
+                    return entityFactory.createProcessorEntity(dtoFactory.createProcessorDto(processor), revision, accessPolicy, status);
+                })
+                .collect(Collectors.toSet());
+        });
     }
 
     @Override
@@ -2366,15 +2166,20 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public ProcessorDTO getProcessor(String groupId, String id) {
-        final ProcessorNode processor = processorDAO.getProcessor(groupId, id);
-        final ProcessorDTO processorDto = dtoFactory.createProcessorDto(processor);
-        return processorDto;
+    public ProcessorEntity getProcessor(String id) {
+        return revisionManager.get(id, rev -> {
+            final ProcessorNode processor = processorDAO.getProcessor(id);
+            processor.authorize(authorizer, RequestAction.READ);
+
+            final RevisionDTO revision = dtoFactory.createRevisionDTO(rev);
+            final ProcessorStatusDTO status = dtoFactory.createProcessorStatusDto(controllerFacade.getProcessorStatus(id));
+            return entityFactory.createProcessorEntity(dtoFactory.createProcessorDto(processor), revision, dtoFactory.createAccessPolicyDto(processor), status);
+        });
     }
 
     @Override
-    public PropertyDescriptorDTO getProcessorPropertyDescriptor(String groupId, String id, String property) {
-        final ProcessorNode processor = processorDAO.getProcessor(groupId, id);
+    public PropertyDescriptorDTO getProcessorPropertyDescriptor(String id, String property) {
+        final ProcessorNode processor = processorDAO.getProcessor(id);
         PropertyDescriptor descriptor = processor.getPropertyDescriptor(property);
 
         // return an invalid descriptor if the processor doesn't suppor this property
@@ -2382,12 +2187,17 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
             descriptor = new PropertyDescriptor.Builder().name(property).addValidator(Validator.INVALID).dynamic(true).build();
         }
 
-        return dtoFactory.createPropertyDescriptorDto(descriptor);
+        return dtoFactory.createPropertyDescriptorDto(descriptor, processor.getProcessGroup().getIdentifier());
     }
 
     @Override
-    public StatusHistoryDTO getProcessorStatusHistory(String groupId, String id) {
-        return controllerFacade.getProcessorStatusHistory(groupId, id);
+    public ProcessorStatusDTO getProcessorStatus(String id) {
+        return revisionManager.get(id, rev -> dtoFactory.createProcessorStatusDto(controllerFacade.getProcessorStatus(id)));
+    }
+
+    @Override
+    public StatusHistoryDTO getProcessorStatusHistory(String id) {
+        return controllerFacade.getProcessorStatusHistory(id);
     }
 
     @Override
@@ -2429,18 +2239,18 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
 
     @Override
     public SystemDiagnosticsDTO getSystemDiagnostics() {
-        final SystemDiagnosticsDTO dto;
-        if (properties.isClusterManager()) {
-            final SystemDiagnostics clusterDiagnostics = clusterManager.getSystemDiagnostics();
-            if (clusterDiagnostics == null) {
-                throw new IllegalStateException("Nodes are connected but no systems diagnostics have been reported.");
-            }
-            dto = dtoFactory.createSystemDiagnosticsDto(clusterDiagnostics);
-        } else {
-            final SystemDiagnostics sysDiagnostics = controllerFacade.getSystemDiagnostics();
-            dto = dtoFactory.createSystemDiagnosticsDto(sysDiagnostics);
+        final SystemDiagnostics sysDiagnostics = controllerFacade.getSystemDiagnostics();
+        return dtoFactory.createSystemDiagnosticsDto(sysDiagnostics);
+    }
+
+    @Override
+    public List<ResourceDTO> getResources() {
+        final List<Resource> resources = controllerFacade.getResources();
+        final List<ResourceDTO> resourceDtos = new ArrayList<>(resources.size());
+        for (final Resource resource : resources) {
+            resourceDtos.add(dtoFactory.createResourceDto(resource));
         }
-        return dto;
+        return resourceDtos;
     }
 
     /**
@@ -2454,18 +2264,8 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
             return true;
         }
 
-        final Set<String> allowedUsers = port.getUserAccessControl();
-        if (allowedUsers.contains(user.getIdentity())) {
-            return true;
-        }
-
-        final String userGroup = user.getUserGroup();
-        if (userGroup == null) {
-            return false;
-        }
-
-        final Set<String> allowedGroups = port.getGroupAccessControl();
-        return allowedGroups.contains(userGroup);
+        // TODO - defer to authorizer to see if user is able to retrieve site-to-site details for the specified port
+        return true;
     }
 
     @Override
@@ -2475,42 +2275,53 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
             throw new WebApplicationException(new Throwable("Unable to access details for current user."));
         }
 
-        // at this point we know that the user must have ROLE_NIFI because it's required
-        // get to the endpoint that calls this method but we'll check again anyways
-        final Set<Authority> authorities = user.getAuthorities();
-        if (!authorities.contains(Authority.ROLE_NIFI)) {
-            throw new AccessDeniedException("User must have the NiFi role in order to access these details.");
-        }
+        // TODO - defer to authorizer to see if user is able to retrieve site-to-site details
+
+        // TODO - filter response for access to specific ports
 
         // serialize the input ports this NiFi has access to
-        final Set<PortDTO> inputPorts = new LinkedHashSet<>();
-        for (RootGroupPort inputPort : controllerFacade.getInputPorts()) {
-            if (isUserAuthorized(user, inputPort)) {
-                final PortDTO dto = new PortDTO();
-                dto.setId(inputPort.getIdentifier());
-                dto.setName(inputPort.getName());
-                dto.setComments(inputPort.getComments());
-                dto.setState(inputPort.getScheduledState().toString());
-                inputPorts.add(dto);
+        final Set<PortDTO> inputPortDtos = new LinkedHashSet<>();
+        final Set<RootGroupPort> inputPorts = controllerFacade.getInputPorts();
+        final Set<String> inputPortIds = inputPorts.stream().map(port -> port.getIdentifier()).collect(Collectors.toSet());
+        revisionManager.get(inputPortIds, () -> {
+            for (RootGroupPort inputPort : inputPorts) {
+                if (isUserAuthorized(user, inputPort)) {
+                    final PortDTO dto = new PortDTO();
+                    dto.setId(inputPort.getIdentifier());
+                    dto.setName(inputPort.getName());
+                    dto.setComments(inputPort.getComments());
+                    dto.setState(inputPort.getScheduledState().toString());
+                    inputPortDtos.add(dto);
+                }
             }
-        }
+            return null;
+        });
 
         // serialize the output ports this NiFi has access to
-        final Set<PortDTO> outputPorts = new LinkedHashSet<>();
-        for (RootGroupPort outputPort : controllerFacade.getOutputPorts()) {
-            if (isUserAuthorized(user, outputPort)) {
-                final PortDTO dto = new PortDTO();
-                dto.setId(outputPort.getIdentifier());
-                dto.setName(outputPort.getName());
-                dto.setComments(outputPort.getComments());
-                dto.setState(outputPort.getScheduledState().toString());
-                outputPorts.add(dto);
+        final Set<PortDTO> outputPortDtos = new LinkedHashSet<>();
+        final Set<RootGroupPort> outputPorts = controllerFacade.getOutputPorts();
+        final Set<String> outputPortIds = outputPorts.stream().map(port -> port.getIdentifier()).collect(Collectors.toSet());
+        revisionManager.get(outputPortIds, () -> {
+            for (RootGroupPort outputPort : controllerFacade.getOutputPorts()) {
+                if (isUserAuthorized(user, outputPort)) {
+                    final PortDTO dto = new PortDTO();
+                    dto.setId(outputPort.getIdentifier());
+                    dto.setName(outputPort.getName());
+                    dto.setComments(outputPort.getComments());
+                    dto.setState(outputPort.getScheduledState().toString());
+                    outputPortDtos.add(dto);
+                }
             }
-        }
+
+            return null;
+        });
 
         // get the root group
-        final ProcessGroup rootGroup = processGroupDAO.getProcessGroup(controllerFacade.getRootGroupId());
-        final ProcessGroupCounts counts = rootGroup.getCounts();
+        final String rootGroupId = controllerFacade.getRootGroupId();
+        final ProcessGroupCounts counts = revisionManager.get(rootGroupId, rev -> {
+            final ProcessGroup rootGroup = processGroupDAO.getProcessGroup(controllerFacade.getRootGroupId());
+            return rootGroup.getCounts();
+        });
 
         // create the controller dto
         final ControllerDTO controllerDTO = new ControllerDTO();
@@ -2518,10 +2329,10 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         controllerDTO.setInstanceId(controllerFacade.getInstanceId());
         controllerDTO.setName(controllerFacade.getName());
         controllerDTO.setComments(controllerFacade.getComments());
-        controllerDTO.setInputPorts(inputPorts);
-        controllerDTO.setOutputPorts(outputPorts);
+        controllerDTO.setInputPorts(inputPortDtos);
+        controllerDTO.setOutputPorts(outputPortDtos);
         controllerDTO.setInputPortCount(inputPorts.size());
-        controllerDTO.setOutputPortCount(outputPorts.size());
+        controllerDTO.setOutputPortCount(outputPortDtos.size());
         controllerDTO.setRunningCount(counts.getRunningCount());
         controllerDTO.setStoppedCount(counts.getStoppedCount());
         controllerDTO.setInvalidCount(counts.getInvalidCount());
@@ -2540,11 +2351,6 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public String getInstanceId() {
-        return controllerFacade.getInstanceId();
-    }
-
-    @Override
     public ControllerConfigurationDTO getControllerConfiguration() {
         ControllerConfigurationDTO controllerConfig = new ControllerConfigurationDTO();
         controllerConfig.setName(controllerFacade.getName());
@@ -2555,9 +2361,6 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         // get the refresh interval
         final long refreshInterval = FormatUtils.getTimeDuration(properties.getAutoRefreshInterval(), TimeUnit.SECONDS);
         controllerConfig.setAutoRefreshIntervalSeconds(refreshInterval);
-
-        // get the content viewer url
-        controllerConfig.setContentViewerUrl(properties.getProperty(NiFiProperties.CONTENT_VIEWER_URL));
 
         final Date now = new Date();
         controllerConfig.setTimeOffset(TimeZone.getDefault().getOffset(now.getTime()));
@@ -2574,150 +2377,365 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public Set<LabelDTO> getLabels(String groupId) {
-        Set<LabelDTO> labelDtos = new LinkedHashSet<>();
-        for (Label label : labelDAO.getLabels(groupId)) {
-            labelDtos.add(dtoFactory.createLabelDto(label));
-        }
-        return labelDtos;
+    public Set<LabelEntity> getLabels(String groupId) {
+        final ProcessGroup group = processGroupDAO.getProcessGroup(groupId);
+        group.authorize(authorizer, RequestAction.READ);
+
+        final Set<Label> labels = labelDAO.getLabels(groupId);
+        final Set<String> ids = labels.stream().map(label -> label.getIdentifier()).collect(Collectors.toSet());
+        return revisionManager.get(ids, () -> {
+            return labels.stream()
+                .map(label -> {
+                    final RevisionDTO revision = dtoFactory.createRevisionDTO(revisionManager.getRevision(label.getIdentifier()));
+                    final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(label);
+                    return entityFactory.createLabelEntity(dtoFactory.createLabelDto(label), revision, accessPolicy);
+                })
+                .collect(Collectors.toSet());
+        });
     }
 
     @Override
-    public LabelDTO getLabel(String groupId, String labelId) {
-        return dtoFactory.createLabelDto(labelDAO.getLabel(groupId, labelId));
+    public LabelEntity getLabel(String labelId) {
+        return revisionManager.get(labelId, rev -> {
+            final Label label = labelDAO.getLabel(labelId);
+            label.authorize(authorizer, RequestAction.READ);
+
+            final RevisionDTO revision = dtoFactory.createRevisionDTO(rev);
+            final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(label);
+            return entityFactory.createLabelEntity(dtoFactory.createLabelDto(label), revision, accessPolicy);
+        });
     }
 
     @Override
-    public Set<FunnelDTO> getFunnels(String groupId) {
-        Set<FunnelDTO> funnelDtos = new LinkedHashSet<>();
-        for (Funnel funnel : funnelDAO.getFunnels(groupId)) {
-            funnelDtos.add(dtoFactory.createFunnelDto(funnel));
-        }
-        return funnelDtos;
+    public Set<FunnelEntity> getFunnels(String groupId) {
+        final ProcessGroup group = processGroupDAO.getProcessGroup(groupId);
+        group.authorize(authorizer, RequestAction.READ);
+
+        final Set<Funnel> funnels = funnelDAO.getFunnels(groupId);
+        final Set<String> funnelIds = funnels.stream().map(funnel -> funnel.getIdentifier()).collect(Collectors.toSet());
+        return revisionManager.get(funnelIds, () -> {
+            return funnels.stream()
+                .map(funnel -> {
+                    final RevisionDTO revision = dtoFactory.createRevisionDTO(revisionManager.getRevision(funnel.getIdentifier()));
+                    final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(funnel);
+                    return entityFactory.createFunnelEntity(dtoFactory.createFunnelDto(funnel), revision, accessPolicy);
+                })
+                .collect(Collectors.toSet());
+        });
     }
 
     @Override
-    public FunnelDTO getFunnel(String groupId, String funnelId) {
-        return dtoFactory.createFunnelDto(funnelDAO.getFunnel(groupId, funnelId));
+    public FunnelEntity getFunnel(String funnelId) {
+        return revisionManager.get(funnelId, rev -> {
+            final Funnel funnel = funnelDAO.getFunnel(funnelId);
+            funnel.authorize(authorizer, RequestAction.READ);
+
+            final RevisionDTO revision = dtoFactory.createRevisionDTO(rev);
+            final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(funnel);
+            return entityFactory.createFunnelEntity(dtoFactory.createFunnelDto(funnel), revision, accessPolicy);
+        });
     }
 
     @Override
-    public SnippetDTO getSnippet(String snippetId) {
-        final Snippet snippet = snippetDAO.getSnippet(snippetId);
-        final SnippetDTO snippetDTO = dtoFactory.createSnippetDto(snippet);
-        snippetDTO.setContents(snippetUtils.populateFlowSnippet(snippet, false, false));
-        return snippetDTO;
+    public SnippetEntity getSnippet(String snippetId) {
+        return revisionManager.get(snippetId, rev -> {
+            final Snippet snippet = snippetDAO.getSnippet(snippetId);
+            final ProcessGroup parentGroup = processGroupDAO.getProcessGroup(snippet.getParentGroupId());
+            final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(parentGroup);
+            return entityFactory.createSnippetEntity(dtoFactory.createSnippetDto(snippet), dtoFactory.createRevisionDTO(rev), accessPolicy);
+        });
     }
 
     @Override
-    public Set<PortDTO> getInputPorts(String groupId) {
-        Set<PortDTO> portDtos = new LinkedHashSet<>();
-        for (Port port : inputPortDAO.getPorts(groupId)) {
-            portDtos.add(dtoFactory.createPortDto(port));
-        }
-        return portDtos;
+    public Set<PortEntity> getInputPorts(String groupId) {
+        final ProcessGroup group = processGroupDAO.getProcessGroup(groupId);
+        group.authorize(authorizer, RequestAction.READ);
+
+        final Set<Port> inputPorts = inputPortDAO.getPorts(groupId);
+        final Set<String> portIds = inputPorts.stream().map(port -> port.getIdentifier()).collect(Collectors.toSet());
+        return revisionManager.get(portIds, () -> {
+            return inputPorts.stream()
+                .map(port -> {
+                    final RevisionDTO revision = dtoFactory.createRevisionDTO(revisionManager.getRevision(port.getIdentifier()));
+                    final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(port);
+                    final PortStatusDTO status = dtoFactory.createPortStatusDto(controllerFacade.getInputPortStatus(port.getIdentifier()));
+                    return entityFactory.createPortEntity(dtoFactory.createPortDto(port), revision, accessPolicy, status);
+                })
+                .collect(Collectors.toSet());
+            });
     }
 
     @Override
-    public Set<PortDTO> getOutputPorts(String groupId) {
-        Set<PortDTO> portDtos = new LinkedHashSet<>();
-        for (Port port : outputPortDAO.getPorts(groupId)) {
-            portDtos.add(dtoFactory.createPortDto(port));
-        }
-        return portDtos;
+    public Set<PortEntity> getOutputPorts(String groupId) {
+        final ProcessGroup group = processGroupDAO.getProcessGroup(groupId);
+        group.authorize(authorizer, RequestAction.READ);
+
+        final Set<Port> ports = outputPortDAO.getPorts(groupId);
+        final Set<String> ids = ports.stream().map(port -> port.getIdentifier()).collect(Collectors.toSet());
+
+        return revisionManager.get(ids, () -> {
+            return ports.stream()
+                .map(port -> {
+                    final RevisionDTO revision = dtoFactory.createRevisionDTO(revisionManager.getRevision(port.getIdentifier()));
+                    final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(port);
+                    final PortStatusDTO status = dtoFactory.createPortStatusDto(controllerFacade.getOutputPortStatus(port.getIdentifier()));
+                    return entityFactory.createPortEntity(dtoFactory.createPortDto(port), revision, accessPolicy, status);
+                })
+                .collect(Collectors.toSet());
+        });
     }
 
     @Override
-    public Set<ProcessGroupDTO> getProcessGroups(String parentGroupId) {
-        Set<ProcessGroupDTO> processGroupDtos = new LinkedHashSet<>();
-        for (ProcessGroup groups : processGroupDAO.getProcessGroups(parentGroupId)) {
-            processGroupDtos.add(dtoFactory.createProcessGroupDto(groups));
-        }
-        return processGroupDtos;
+    public Set<ProcessGroupEntity> getProcessGroups(String parentGroupId) {
+        final ProcessGroup parentGroup = processGroupDAO.getProcessGroup(parentGroupId);
+        parentGroup.authorize(authorizer, RequestAction.READ);
+
+        final Set<ProcessGroup> groups = processGroupDAO.getProcessGroups(parentGroupId);
+        final Set<String> ids = groups.stream().map(group -> group.getIdentifier()).collect(Collectors.toSet());
+        return revisionManager.get(ids, () -> {
+            return groups.stream()
+                .map(group -> {
+                    final RevisionDTO revision = dtoFactory.createRevisionDTO(revisionManager.getRevision(group.getIdentifier()));
+                    final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(group);
+                    final ProcessGroupStatusDTO status = dtoFactory.createConciseProcessGroupStatusDto(controllerFacade.getProcessGroupStatus(group.getIdentifier()));
+                    return entityFactory.createProcessGroupEntity(dtoFactory.createProcessGroupDto(group), revision, accessPolicy, status);
+                })
+                .collect(Collectors.toSet());
+        });
     }
 
     @Override
-    public Set<RemoteProcessGroupDTO> getRemoteProcessGroups(String groupId) {
-        Set<RemoteProcessGroupDTO> remoteProcessGroupDtos = new LinkedHashSet<>();
-        for (RemoteProcessGroup remoteProcessGroup : remoteProcessGroupDAO.getRemoteProcessGroups(groupId)) {
-            remoteProcessGroupDtos.add(dtoFactory.createRemoteProcessGroupDto(remoteProcessGroup));
-        }
-        return remoteProcessGroupDtos;
+    public Set<RemoteProcessGroupEntity> getRemoteProcessGroups(String groupId) {
+        final ProcessGroup group = processGroupDAO.getProcessGroup(groupId);
+        group.authorize(authorizer, RequestAction.READ);
+
+        final Set<RemoteProcessGroup> rpgs = remoteProcessGroupDAO.getRemoteProcessGroups(groupId);
+        final Set<String> ids = rpgs.stream().map(rpg -> rpg.getIdentifier()).collect(Collectors.toSet());
+
+        return revisionManager.get(ids, () -> {
+            return rpgs.stream()
+                .map(rpg -> {
+                    final RevisionDTO revision = dtoFactory.createRevisionDTO(revisionManager.getRevision(rpg.getIdentifier()));
+                    final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(rpg);
+                    final RemoteProcessGroupStatusDTO status = dtoFactory.createRemoteProcessGroupStatusDto(controllerFacade.getRemoteProcessGroupStatus(rpg.getIdentifier()));
+                    return entityFactory.createRemoteProcessGroupEntity(dtoFactory.createRemoteProcessGroupDto(rpg), revision, accessPolicy, status);
+                })
+                .collect(Collectors.toSet());
+        });
     }
 
     @Override
-    public PortDTO getInputPort(String groupId, String inputPortId) {
-        return dtoFactory.createPortDto(inputPortDAO.getPort(groupId, inputPortId));
+    public PortEntity getInputPort(String inputPortId) {
+        return revisionManager.get(inputPortId, rev -> {
+            final Port port = inputPortDAO.getPort(inputPortId);
+            port.authorize(authorizer, RequestAction.READ);
+
+            final RevisionDTO revision = dtoFactory.createRevisionDTO(rev);
+            final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(port);
+            final PortStatusDTO status = dtoFactory.createPortStatusDto(controllerFacade.getInputPortStatus(inputPortId));
+            return entityFactory.createPortEntity(dtoFactory.createPortDto(port), revision, accessPolicy, status);
+        });
     }
 
     @Override
-    public PortDTO getOutputPort(String groupId, String outputPortId) {
-        return dtoFactory.createPortDto(outputPortDAO.getPort(groupId, outputPortId));
+    public PortStatusDTO getInputPortStatus(String inputPortId) {
+        return revisionManager.get(inputPortId, rev -> dtoFactory.createPortStatusDto(controllerFacade.getInputPortStatus(inputPortId)));
     }
 
     @Override
-    public RemoteProcessGroupDTO getRemoteProcessGroup(String groupId, String remoteProcessGroupId) {
-        return dtoFactory.createRemoteProcessGroupDto(remoteProcessGroupDAO.getRemoteProcessGroup(groupId, remoteProcessGroupId));
+    public PortEntity getOutputPort(String outputPortId) {
+        return revisionManager.get(outputPortId, rev -> {
+            final Port port = outputPortDAO.getPort(outputPortId);
+            port.authorize(authorizer, RequestAction.READ);
+
+            final RevisionDTO revision = dtoFactory.createRevisionDTO(rev);
+            final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(port);
+            final PortStatusDTO status = dtoFactory.createPortStatusDto(controllerFacade.getOutputPortStatus(outputPortId));
+            return entityFactory.createPortEntity(dtoFactory.createPortDto(port), revision, accessPolicy, status);
+        });
     }
 
     @Override
-    public StatusHistoryDTO getRemoteProcessGroupStatusHistory(String groupId, String id) {
-        return controllerFacade.getRemoteProcessGroupStatusHistory(groupId, id);
+    public PortStatusDTO getOutputPortStatus(String outputPortId) {
+        return revisionManager.get(outputPortId, rev -> dtoFactory.createPortStatusDto(controllerFacade.getInputPortStatus(outputPortId)));
     }
 
     @Override
-    public ConfigurationSnapshot<ProcessGroupDTO> getProcessGroup(String groupId, final boolean recurse) {
-        ProcessGroup processGroup = processGroupDAO.getProcessGroup(groupId);
-        Revision revision = optimisticLockingManager.getLastModification().getRevision();
-        ConfigurationSnapshot<ProcessGroupDTO> response = new ConfigurationSnapshot<>(revision.getVersion(), dtoFactory.createProcessGroupDto(processGroup, recurse));
-        return response;
+    public RemoteProcessGroupEntity getRemoteProcessGroup(String remoteProcessGroupId) {
+        return revisionManager.get(remoteProcessGroupId, rev -> {
+            final RemoteProcessGroup rpg = remoteProcessGroupDAO.getRemoteProcessGroup(remoteProcessGroupId);
+            rpg.authorize(authorizer, RequestAction.READ);
+
+            final RevisionDTO revision = dtoFactory.createRevisionDTO(rev);
+            final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(rpg);
+            final RemoteProcessGroupStatusDTO status = dtoFactory.createRemoteProcessGroupStatusDto(controllerFacade.getRemoteProcessGroupStatus(rpg.getIdentifier()));
+            return entityFactory.createRemoteProcessGroupEntity(dtoFactory.createRemoteProcessGroupDto(rpg), revision, accessPolicy, status);
+        });
     }
 
     @Override
-    public Set<ControllerServiceDTO> getControllerServices() {
-        final Set<ControllerServiceDTO> controllerServiceDtos = new LinkedHashSet<>();
-        for (ControllerServiceNode controllerService : controllerServiceDAO.getControllerServices()) {
-            controllerServiceDtos.add(dtoFactory.createControllerServiceDto(controllerService));
-        }
-        return controllerServiceDtos;
+    public RemoteProcessGroupStatusDTO getRemoteProcessGroupStatus(String id) {
+        return revisionManager.get(id, rev -> dtoFactory.createRemoteProcessGroupStatusDto(controllerFacade.getRemoteProcessGroupStatus(id)));
     }
 
     @Override
-    public ControllerServiceDTO getControllerService(String controllerServiceId) {
-        return dtoFactory.createControllerServiceDto(controllerServiceDAO.getControllerService(controllerServiceId));
+    public StatusHistoryDTO getRemoteProcessGroupStatusHistory(String id) {
+        return controllerFacade.getRemoteProcessGroupStatusHistory(id);
+    }
+
+    @Override
+    public ConfigurationSnapshot<ProcessGroupFlowDTO> getProcessGroupFlow(String groupId, boolean recurse) {
+        return revisionManager.get(groupId,
+            rev -> {
+                // get all identifiers for every child component
+                final Set<String> identifiers = new HashSet<>();
+                ProcessGroup processGroup = processGroupDAO.getProcessGroup(groupId);
+                processGroup.getProcessors().stream()
+                    .map(proc -> proc.getIdentifier())
+                    .forEach(id -> identifiers.add(id));
+                processGroup.getConnections().stream()
+                    .map(conn -> conn.getIdentifier())
+                    .forEach(id -> identifiers.add(id));
+                processGroup.getInputPorts().stream()
+                    .map(port -> port.getIdentifier())
+                    .forEach(id -> identifiers.add(id));
+                processGroup.getOutputPorts().stream()
+                    .map(port -> port.getIdentifier())
+                    .forEach(id -> identifiers.add(id));
+                processGroup.getProcessGroups().stream()
+                    .map(group -> group.getIdentifier())
+                    .forEach(id -> identifiers.add(id));
+                processGroup.getRemoteProcessGroups().stream()
+                    .map(remoteGroup -> remoteGroup.getIdentifier())
+                    .forEach(id -> identifiers.add(id));
+                processGroup.getRemoteProcessGroups().stream()
+                    .flatMap(remoteGroup -> remoteGroup.getInputPorts().stream())
+                    .map(remoteInputPort -> remoteInputPort.getIdentifier())
+                    .forEach(id -> identifiers.add(id));
+                processGroup.getRemoteProcessGroups().stream()
+                    .flatMap(remoteGroup -> remoteGroup.getOutputPorts().stream())
+                    .map(remoteOutputPort -> remoteOutputPort.getIdentifier())
+                    .forEach(id -> identifiers.add(id));
+                processGroup.getControllerServices(false).stream()
+                    .map(controllerService -> controllerService.getIdentifier())
+                    .forEach(id -> identifiers.add(id));
+
+                // read lock on every component being accessed in the dto conversion
+                return revisionManager.get(identifiers,
+                    () -> {
+                        final ProcessGroupStatus groupStatus = controllerFacade.getProcessGroupStatus(groupId);
+                        ConfigurationSnapshot<ProcessGroupFlowDTO> response = new ConfigurationSnapshot<>(rev.getVersion(),
+                            dtoFactory.createProcessGroupFlowDto(processGroup, groupStatus, revisionManager));
+                        return response;
+                    });
+            });
+    }
+
+    @Override
+    public ProcessGroupEntity getProcessGroup(String groupId) {
+        return revisionManager.get(groupId, rev -> {
+            final ProcessGroup processGroup = processGroupDAO.getProcessGroup(groupId);
+            processGroup.authorize(authorizer, RequestAction.READ);
+
+            final RevisionDTO revision = dtoFactory.createRevisionDTO(rev);
+            final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(processGroup);
+            final ProcessGroupStatusDTO status = dtoFactory.createConciseProcessGroupStatusDto(controllerFacade.getProcessGroupStatus(groupId));
+            return entityFactory.createProcessGroupEntity(dtoFactory.createProcessGroupDto(processGroup), revision, accessPolicy, status);
+        });
+    }
+
+    @Override
+    public Set<ControllerServiceEntity> getControllerServices(String groupId) {
+        // TODO - move this logic into the ControllerServiceDAO
+        final ProcessGroup group = processGroupDAO.getProcessGroup(groupId);
+        final Set<ControllerServiceNode> serviceNodes = group.getControllerServices(true);
+        final Set<String> serviceIds = serviceNodes.stream().map(service -> service.getIdentifier()).collect(Collectors.toSet());
+
+        return revisionManager.get(serviceIds, () -> {
+            return serviceNodes.stream()
+                .map(serviceNode -> {
+                    final ControllerServiceDTO dto = dtoFactory.createControllerServiceDto(serviceNode);
+
+                    final ControllerServiceReference ref = serviceNode.getReferences();
+                    final ControllerServiceReferencingComponentsEntity referencingComponentsEntity = createControllerServiceReferencingComponentsEntity(ref);
+                    dto.setReferencingComponents(referencingComponentsEntity.getControllerServiceReferencingComponents());
+
+                    final RevisionDTO revision = dtoFactory.createRevisionDTO(revisionManager.getRevision(serviceNode.getIdentifier()));
+                    final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(serviceNode);
+                    return entityFactory.createControllerServiceEntity(dto, revision, accessPolicy);
+                })
+                .collect(Collectors.toSet());
+        });
+    }
+
+    @Override
+    public ControllerServiceEntity getControllerService(String controllerServiceId) {
+        return revisionManager.get(controllerServiceId, rev -> {
+            final ControllerServiceNode controllerService = controllerServiceDAO.getControllerService(controllerServiceId);
+            controllerService.authorize(authorizer, RequestAction.READ);
+
+            final RevisionDTO revision = dtoFactory.createRevisionDTO(rev);
+            final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(controllerService);
+            final ControllerServiceDTO dto = dtoFactory.createControllerServiceDto(controllerService);
+
+            final ControllerServiceReference ref = controllerService.getReferences();
+            final ControllerServiceReferencingComponentsEntity referencingComponentsEntity = createControllerServiceReferencingComponentsEntity(ref);
+            dto.setReferencingComponents(referencingComponentsEntity.getControllerServiceReferencingComponents());
+
+            return entityFactory.createControllerServiceEntity(dto, revision, accessPolicy);
+        });
     }
 
     @Override
     public PropertyDescriptorDTO getControllerServicePropertyDescriptor(String id, String property) {
-        final ControllerServiceNode controllerService = controllerServiceDAO.getControllerService(id);
-        PropertyDescriptor descriptor = controllerService.getControllerServiceImplementation().getPropertyDescriptor(property);
+        return revisionManager.get(id, rev -> {
+            final ControllerServiceNode controllerService = controllerServiceDAO.getControllerService(id);
+            PropertyDescriptor descriptor = controllerService.getControllerServiceImplementation().getPropertyDescriptor(property);
 
-        // return an invalid descriptor if the controller service doesn't support this property
-        if (descriptor == null) {
-            descriptor = new PropertyDescriptor.Builder().name(property).addValidator(Validator.INVALID).dynamic(true).build();
-        }
+            // return an invalid descriptor if the controller service doesn't support this property
+            if (descriptor == null) {
+                descriptor = new PropertyDescriptor.Builder().name(property).addValidator(Validator.INVALID).dynamic(true).build();
+            }
 
-        return dtoFactory.createPropertyDescriptorDto(descriptor);
+            return dtoFactory.createPropertyDescriptorDto(descriptor, controllerService.getProcessGroup().getIdentifier());
+        });
     }
 
     @Override
-    public Set<ControllerServiceReferencingComponentDTO> getControllerServiceReferencingComponents(String controllerServiceId) {
-        final ControllerServiceNode service = controllerServiceDAO.getControllerService(controllerServiceId);
-        return dtoFactory.createControllerServiceReferencingComponentsDto(service.getReferences());
+    public ControllerServiceReferencingComponentsEntity getControllerServiceReferencingComponents(String controllerServiceId) {
+        return revisionManager.get(controllerServiceId, rev -> {
+            final ControllerServiceNode service = controllerServiceDAO.getControllerService(controllerServiceId);
+            final ControllerServiceReference ref = service.getReferences();
+            return createControllerServiceReferencingComponentsEntity(ref);
+        });
     }
 
     @Override
-    public Set<ReportingTaskDTO> getReportingTasks() {
-        final Set<ReportingTaskDTO> reportingTaskDtos = new LinkedHashSet<>();
-        for (ReportingTaskNode reportingTask : reportingTaskDAO.getReportingTasks()) {
-            reportingTaskDtos.add(dtoFactory.createReportingTaskDto(reportingTask));
-        }
-        return reportingTaskDtos;
+    public Set<ReportingTaskEntity> getReportingTasks() {
+        final Set<ReportingTaskNode> reportingTasks = reportingTaskDAO.getReportingTasks();
+        final Set<String> ids = reportingTasks.stream().map(task -> task.getIdentifier()).collect(Collectors.toSet());
+
+        return revisionManager.get(ids, () -> {
+            return reportingTasks.stream()
+                .map(reportingTask -> {
+                    final RevisionDTO revision = dtoFactory.createRevisionDTO(revisionManager.getRevision(reportingTask.getIdentifier()));
+                    final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(reportingTask);
+                    return entityFactory.createReportingTaskEntity(dtoFactory.createReportingTaskDto(reportingTask), revision, accessPolicy);
+                })
+                .collect(Collectors.toSet());
+        });
     }
 
     @Override
-    public ReportingTaskDTO getReportingTask(String reportingTaskId) {
-        return dtoFactory.createReportingTaskDto(reportingTaskDAO.getReportingTask(reportingTaskId));
+    public ReportingTaskEntity getReportingTask(String reportingTaskId) {
+        return revisionManager.get(reportingTaskId, rev -> {
+            final ReportingTaskNode reportingTask = reportingTaskDAO.getReportingTask(reportingTaskId);
+            reportingTask.authorize(authorizer, RequestAction.READ);
+
+            final RevisionDTO revision = dtoFactory.createRevisionDTO(rev);
+            final AccessPolicyDTO accessPolicy = dtoFactory.createAccessPolicyDto(reportingTask);
+            return entityFactory.createReportingTaskEntity(dtoFactory.createReportingTaskDto(reportingTask), revision, accessPolicy);
+        });
     }
 
     @Override
@@ -2730,7 +2748,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
             descriptor = new PropertyDescriptor.Builder().name(property).addValidator(Validator.INVALID).dynamic(true).build();
         }
 
-        return dtoFactory.createPropertyDescriptorDto(descriptor);
+        return dtoFactory.createPropertyDescriptorDto(descriptor, "root");
     }
 
     @Override
@@ -2803,82 +2821,6 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
     }
 
     @Override
-    public UserDTO getUser(String userId) {
-        // get the user
-        NiFiUser user = userService.getUserById(userId);
-
-        // ensure the user was found
-        if (user == null) {
-            throw new ResourceNotFoundException(String.format("Unable to find user with id '%s'.", userId));
-        }
-
-        return dtoFactory.createUserDTO(user);
-    }
-
-    @Override
-    public Collection<UserDTO> getUsers(Boolean grouped) {
-        // get the users
-        final Collection<NiFiUser> users = userService.getUsers();
-        final Collection<UserDTO> userDTOs = new HashSet<>();
-
-        if (grouped) {
-            final Map<String, UserDTO> groupedUserDTOs = new HashMap<>();
-
-            // group the users
-            for (final NiFiUser user : users) {
-                if (StringUtils.isNotBlank(user.getUserGroup())) {
-                    if (groupedUserDTOs.containsKey(user.getUserGroup())) {
-                        final UserDTO groupedUser = groupedUserDTOs.get(user.getUserGroup());
-                        groupedUser.setId(groupedUser.getId() + "," + String.valueOf(user.getId()));
-                        groupedUser.setUserName(groupedUser.getUserName() + ", " + user.getUserName());
-                        groupedUser.setDn(groupedUser.getDn() + ", " + user.getIdentity());
-                        groupedUser.setCreation(getOldestDate(groupedUser.getCreation(), user.getCreation()));
-                        groupedUser.setLastAccessed(getNewestDate(groupedUser.getLastAccessed(), user.getLastAccessed()));
-                        groupedUser.setLastVerified(getNewestDate(groupedUser.getLastVerified(), user.getLastVerified()));
-
-                        // only retain the justification if al users have the same justification
-                        if (groupedUser.getJustification() != null) {
-                            if (!groupedUser.getStatus().equals(user.getJustification())) {
-                                groupedUser.setJustification(null);
-                            }
-                        }
-
-                        // only retain the status if all users have the same status
-                        if (groupedUser.getStatus() != null) {
-                            if (!groupedUser.getStatus().equals(user.getStatus().toString())) {
-                                groupedUser.setStatus(null);
-                            }
-                        }
-
-                        // only retain the authorities if all users have the same authorities
-                        if (groupedUser.getAuthorities() != null) {
-                            final Set<String> groupAuthorities = new HashSet<>(groupedUser.getAuthorities());
-                            final Set<String> userAuthorities = Authority.convertAuthorities(user.getAuthorities());
-                            if (!CollectionUtils.isEqualCollection(groupAuthorities, userAuthorities)) {
-                                groupedUser.setAuthorities(null);
-                            }
-                        }
-                    } else {
-                        groupedUserDTOs.put(user.getUserGroup(), dtoFactory.createUserDTO(user));
-                    }
-                } else {
-                    userDTOs.add(dtoFactory.createUserDTO(user));
-                }
-            }
-
-            // add the grouped users
-            userDTOs.addAll(groupedUserDTOs.values());
-        } else {
-            // convert each into a DTOs
-            for (final NiFiUser user : users) {
-                userDTOs.add(dtoFactory.createUserDTO(user));
-            }
-        }
-
-        return userDTOs;
-    }
-
-    @Override
     public boolean isClustered() {
         return controllerFacade.isClustered();
     }
@@ -2907,7 +2849,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         for (final Node node : clusterManager.getNodes()) {
             // create and add node dto
             final String nodeId = node.getNodeId().getId();
-            nodeDtos.add(dtoFactory.createNodeDTO(node, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId)));
+            nodeDtos.add(dtoFactory.createNodeDTO(node, clusterManager.getLatestHeartbeat(node.getNodeId()), clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId)));
         }
 
         return clusterDto;
@@ -2919,7 +2861,7 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         if (node == null) {
             throw new UnknownNodeException("Node does not exist.");
         } else {
-            return dtoFactory.createNodeDTO(node, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId));
+            return dtoFactory.createNodeDTO(node, clusterManager.getLatestHeartbeat(node.getNodeId()), clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId));
         }
     }
 
@@ -2932,595 +2874,6 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
 
         final String userDn = user.getIdentity();
         clusterManager.deleteNode(nodeId, userDn);
-    }
-
-    private ProcessorStatus findNodeProcessorStatus(final ProcessGroupStatus groupStatus, final String processorId) {
-        ProcessorStatus processorStatus = null;
-
-        for (final ProcessorStatus status : groupStatus.getProcessorStatus()) {
-            if (processorId.equals(status.getId())) {
-                processorStatus = status;
-                break;
-            }
-        }
-
-        if (processorStatus == null) {
-            for (final ProcessGroupStatus status : groupStatus.getProcessGroupStatus()) {
-                processorStatus = findNodeProcessorStatus(status, processorId);
-
-                if (processorStatus != null) {
-                    break;
-                }
-            }
-        }
-
-        return processorStatus;
-    }
-
-    // TODO Refactor!!!
-    @Override
-    public ClusterProcessorStatusDTO getClusterProcessorStatus(String processorId) {
-
-        final ClusterProcessorStatusDTO clusterProcessorStatusDto = new ClusterProcessorStatusDTO();
-        clusterProcessorStatusDto.setNodeProcessorStatus(new ArrayList<NodeProcessorStatusDTO>());
-
-        // set the current time
-        clusterProcessorStatusDto.setStatsLastRefreshed(new Date());
-
-        final Set<Node> nodes = clusterManager.getNodes(Node.Status.CONNECTED);
-        boolean firstNode = true;
-        for (final Node node : nodes) {
-
-            final HeartbeatPayload nodeHeartbeatPayload = node.getHeartbeatPayload();
-            if (nodeHeartbeatPayload == null) {
-                continue;
-            }
-
-            final ProcessGroupStatus nodeStats = nodeHeartbeatPayload.getProcessGroupStatus();
-            if (nodeStats == null || nodeStats.getProcessorStatus() == null) {
-                continue;
-            }
-
-            // attempt to find the processor stats for this node
-            final ProcessorStatus processorStatus = findNodeProcessorStatus(nodeStats, processorId);
-
-            // sanity check that we have status for this processor
-            if (processorStatus == null) {
-                throw new ResourceNotFoundException(String.format("Unable to find status for processor id '%s'.", processorId));
-            }
-
-            if (firstNode) {
-                clusterProcessorStatusDto.setProcessorId(processorId);
-                clusterProcessorStatusDto.setProcessorName(processorStatus.getName());
-                clusterProcessorStatusDto.setProcessorType(processorStatus.getType());
-                clusterProcessorStatusDto.setProcessorRunStatus(processorStatus.getRunStatus().toString());
-                firstNode = false;
-            }
-
-            // create node processor status dto
-            final NodeProcessorStatusDTO nodeProcessorStatusDTO = new NodeProcessorStatusDTO();
-            clusterProcessorStatusDto.getNodeProcessorStatus().add(nodeProcessorStatusDTO);
-
-            // populate node processor status dto
-            final String nodeId = node.getNodeId().getId();
-            nodeProcessorStatusDTO.setNode(dtoFactory.createNodeDTO(node, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId)));
-            nodeProcessorStatusDTO.setProcessorStatus(dtoFactory.createProcessorStatusDto(processorStatus));
-
-        }
-
-        return clusterProcessorStatusDto;
-    }
-
-    private ConnectionStatus findNodeConnectionStatus(final ProcessGroupStatus groupStatus, final String connectionId) {
-        ConnectionStatus connectionStatus = null;
-
-        for (final ConnectionStatus status : groupStatus.getConnectionStatus()) {
-            if (connectionId.equals(status.getId())) {
-                connectionStatus = status;
-                break;
-            }
-        }
-
-        if (connectionStatus == null) {
-            for (final ProcessGroupStatus status : groupStatus.getProcessGroupStatus()) {
-                connectionStatus = findNodeConnectionStatus(status, connectionId);
-
-                if (connectionStatus != null) {
-                    break;
-                }
-            }
-        }
-
-        return connectionStatus;
-    }
-
-    @Override
-    public ClusterConnectionStatusDTO getClusterConnectionStatus(String connectionId) {
-        final ClusterConnectionStatusDTO clusterConnectionStatusDto = new ClusterConnectionStatusDTO();
-        clusterConnectionStatusDto.setNodeConnectionStatus(new ArrayList<NodeConnectionStatusDTO>());
-
-        // set the current time
-        clusterConnectionStatusDto.setStatsLastRefreshed(new Date());
-
-        final Set<Node> nodes = clusterManager.getNodes(Node.Status.CONNECTED);
-        boolean firstNode = true;
-        for (final Node node : nodes) {
-
-            final HeartbeatPayload nodeHeartbeatPayload = node.getHeartbeatPayload();
-            if (nodeHeartbeatPayload == null) {
-                continue;
-            }
-
-            final ProcessGroupStatus nodeStats = nodeHeartbeatPayload.getProcessGroupStatus();
-            if (nodeStats == null || nodeStats.getProcessorStatus() == null) {
-                continue;
-            }
-
-            // find the connection status for this node
-            final ConnectionStatus connectionStatus = findNodeConnectionStatus(nodeStats, connectionId);
-
-            // sanity check that we have status for this connection
-            if (connectionStatus == null) {
-                throw new ResourceNotFoundException(String.format("Unable to find status for connection id '%s'.", connectionId));
-            }
-
-            if (firstNode) {
-                clusterConnectionStatusDto.setConnectionId(connectionId);
-                clusterConnectionStatusDto.setConnectionName(connectionStatus.getName());
-                firstNode = false;
-            }
-
-            // create node connection status dto
-            final NodeConnectionStatusDTO nodeConnectionStatusDTO = new NodeConnectionStatusDTO();
-            clusterConnectionStatusDto.getNodeConnectionStatus().add(nodeConnectionStatusDTO);
-
-            // populate node processor status dto
-            final String nodeId = node.getNodeId().getId();
-            nodeConnectionStatusDTO.setNode(dtoFactory.createNodeDTO(node, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId)));
-            nodeConnectionStatusDTO.setConnectionStatus(dtoFactory.createConnectionStatusDto(connectionStatus));
-
-        }
-
-        return clusterConnectionStatusDto;
-    }
-
-    private ProcessGroupStatus findNodeProcessGroupStatus(final ProcessGroupStatus groupStatus, final String processGroupId) {
-        ProcessGroupStatus processGroupStatus = null;
-
-        if (processGroupId.equals(groupStatus.getId())) {
-            processGroupStatus = groupStatus;
-        }
-
-        if (processGroupStatus == null) {
-            for (final ProcessGroupStatus status : groupStatus.getProcessGroupStatus()) {
-                processGroupStatus = findNodeProcessGroupStatus(status, processGroupId);
-
-                if (processGroupStatus != null) {
-                    break;
-                }
-            }
-        }
-
-        return processGroupStatus;
-    }
-
-    @Override
-    public ClusterProcessGroupStatusDTO getClusterProcessGroupStatus(String processGroupId) {
-
-        final ClusterProcessGroupStatusDTO clusterProcessGroupStatusDto = new ClusterProcessGroupStatusDTO();
-        clusterProcessGroupStatusDto.setNodeProcessGroupStatus(new ArrayList<NodeProcessGroupStatusDTO>());
-
-        // set the current time
-        clusterProcessGroupStatusDto.setStatsLastRefreshed(new Date());
-
-        final Set<Node> nodes = clusterManager.getNodes(Node.Status.CONNECTED);
-        boolean firstNode = true;
-        for (final Node node : nodes) {
-
-            final HeartbeatPayload nodeHeartbeatPayload = node.getHeartbeatPayload();
-            if (nodeHeartbeatPayload == null) {
-                continue;
-            }
-
-            final ProcessGroupStatus nodeStats = nodeHeartbeatPayload.getProcessGroupStatus();
-            if (nodeStats == null || nodeStats.getProcessorStatus() == null) {
-                continue;
-            }
-
-            // attempt to find the process group stats for this node
-            final ProcessGroupStatus processGroupStatus = findNodeProcessGroupStatus(nodeStats, processGroupId);
-
-            // sanity check that we have status for this process group
-            if (processGroupStatus == null) {
-                throw new ResourceNotFoundException(String.format("Unable to find status for process group id '%s'.", processGroupId));
-            }
-
-            if (firstNode) {
-                clusterProcessGroupStatusDto.setProcessGroupId(processGroupId);
-                clusterProcessGroupStatusDto.setProcessGroupName(processGroupStatus.getName());
-                firstNode = false;
-            }
-
-            // create node process group status dto
-            final NodeProcessGroupStatusDTO nodeProcessGroupStatusDTO = new NodeProcessGroupStatusDTO();
-            clusterProcessGroupStatusDto.getNodeProcessGroupStatus().add(nodeProcessGroupStatusDTO);
-
-            // populate node process group status dto
-            final String nodeId = node.getNodeId().getId();
-            nodeProcessGroupStatusDTO.setNode(dtoFactory.createNodeDTO(node, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId)));
-            nodeProcessGroupStatusDTO.setProcessGroupStatus(dtoFactory.createProcessGroupStatusDto(clusterManager.getBulletinRepository(), processGroupStatus));
-
-        }
-
-        return clusterProcessGroupStatusDto;
-    }
-
-    private PortStatus findNodeInputPortStatus(final ProcessGroupStatus groupStatus, final String inputPortId) {
-        PortStatus portStatus = null;
-
-        for (final PortStatus status : groupStatus.getInputPortStatus()) {
-            if (inputPortId.equals(status.getId())) {
-                portStatus = status;
-                break;
-            }
-        }
-
-        if (portStatus == null) {
-            for (final ProcessGroupStatus status : groupStatus.getProcessGroupStatus()) {
-                portStatus = findNodeInputPortStatus(status, inputPortId);
-
-                if (portStatus != null) {
-                    break;
-                }
-            }
-        }
-
-        return portStatus;
-    }
-
-    @Override
-    public ClusterPortStatusDTO getClusterInputPortStatus(String inputPortId) {
-        final ClusterPortStatusDTO clusterInputPortStatusDto = new ClusterPortStatusDTO();
-        clusterInputPortStatusDto.setNodePortStatus(new ArrayList<NodePortStatusDTO>());
-
-        // set the current time
-        clusterInputPortStatusDto.setStatsLastRefreshed(new Date());
-
-        final Set<Node> nodes = clusterManager.getNodes(Node.Status.CONNECTED);
-        boolean firstNode = true;
-        for (final Node node : nodes) {
-
-            final HeartbeatPayload nodeHeartbeatPayload = node.getHeartbeatPayload();
-            if (nodeHeartbeatPayload == null) {
-                continue;
-            }
-
-            final ProcessGroupStatus nodeStats = nodeHeartbeatPayload.getProcessGroupStatus();
-            if (nodeStats == null || nodeStats.getProcessorStatus() == null) {
-                continue;
-            }
-
-            // find the input status for this node
-            final PortStatus inputPortStatus = findNodeInputPortStatus(nodeStats, inputPortId);
-
-            // sanity check that we have status for this input port
-            if (inputPortStatus == null) {
-                throw new ResourceNotFoundException(String.format("Unable to find status for input port id '%s'.", inputPortId));
-            }
-
-            if (firstNode) {
-                clusterInputPortStatusDto.setPortId(inputPortId);
-                clusterInputPortStatusDto.setPortName(inputPortStatus.getName());
-                firstNode = false;
-            }
-
-            // create node port status dto
-            final NodePortStatusDTO nodeInputPortStatusDTO = new NodePortStatusDTO();
-            clusterInputPortStatusDto.getNodePortStatus().add(nodeInputPortStatusDTO);
-
-            // populate node input port status dto
-            final String nodeId = node.getNodeId().getId();
-            nodeInputPortStatusDTO.setNode(dtoFactory.createNodeDTO(node, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId)));
-            nodeInputPortStatusDTO.setPortStatus(dtoFactory.createPortStatusDto(inputPortStatus));
-        }
-
-        return clusterInputPortStatusDto;
-    }
-
-    private PortStatus findNodeOutputPortStatus(final ProcessGroupStatus groupStatus, final String outputPortId) {
-        PortStatus portStatus = null;
-
-        for (final PortStatus status : groupStatus.getOutputPortStatus()) {
-            if (outputPortId.equals(status.getId())) {
-                portStatus = status;
-                break;
-            }
-        }
-
-        if (portStatus == null) {
-            for (final ProcessGroupStatus status : groupStatus.getProcessGroupStatus()) {
-                portStatus = findNodeOutputPortStatus(status, outputPortId);
-
-                if (portStatus != null) {
-                    break;
-                }
-            }
-        }
-
-        return portStatus;
-    }
-
-    @Override
-    public ClusterPortStatusDTO getClusterOutputPortStatus(String outputPortId) {
-        final ClusterPortStatusDTO clusterOutputPortStatusDto = new ClusterPortStatusDTO();
-        clusterOutputPortStatusDto.setNodePortStatus(new ArrayList<NodePortStatusDTO>());
-
-        // set the current time
-        clusterOutputPortStatusDto.setStatsLastRefreshed(new Date());
-
-        final Set<Node> nodes = clusterManager.getNodes(Node.Status.CONNECTED);
-        boolean firstNode = true;
-        for (final Node node : nodes) {
-
-            final HeartbeatPayload nodeHeartbeatPayload = node.getHeartbeatPayload();
-            if (nodeHeartbeatPayload == null) {
-                continue;
-            }
-
-            final ProcessGroupStatus nodeStats = nodeHeartbeatPayload.getProcessGroupStatus();
-            if (nodeStats == null || nodeStats.getProcessorStatus() == null) {
-                continue;
-            }
-
-            // find the output status for this node
-            final PortStatus outputPortStatus = findNodeOutputPortStatus(nodeStats, outputPortId);
-
-            // sanity check that we have status for this output port
-            if (outputPortStatus == null) {
-                throw new ResourceNotFoundException(String.format("Unable to find status for output port id '%s'.", outputPortId));
-            }
-
-            if (firstNode) {
-                clusterOutputPortStatusDto.setPortId(outputPortId);
-                clusterOutputPortStatusDto.setPortName(outputPortStatus.getName());
-                firstNode = false;
-            }
-
-            // create node port status dto
-            final NodePortStatusDTO nodeOutputPortStatusDTO = new NodePortStatusDTO();
-            clusterOutputPortStatusDto.getNodePortStatus().add(nodeOutputPortStatusDTO);
-
-            // populate node output port status dto
-            final String nodeId = node.getNodeId().getId();
-            nodeOutputPortStatusDTO.setNode(dtoFactory.createNodeDTO(node, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId)));
-            nodeOutputPortStatusDTO.setPortStatus(dtoFactory.createPortStatusDto(outputPortStatus));
-        }
-
-        return clusterOutputPortStatusDto;
-    }
-
-    private RemoteProcessGroupStatus findNodeRemoteProcessGroupStatus(final ProcessGroupStatus groupStatus, final String remoteProcessGroupId) {
-        RemoteProcessGroupStatus remoteProcessGroupStatus = null;
-
-        for (final RemoteProcessGroupStatus status : groupStatus.getRemoteProcessGroupStatus()) {
-            if (remoteProcessGroupId.equals(status.getId())) {
-                remoteProcessGroupStatus = status;
-                break;
-            }
-        }
-
-        if (remoteProcessGroupStatus == null) {
-            for (final ProcessGroupStatus status : groupStatus.getProcessGroupStatus()) {
-                remoteProcessGroupStatus = findNodeRemoteProcessGroupStatus(status, remoteProcessGroupId);
-
-                if (remoteProcessGroupStatus != null) {
-                    break;
-                }
-            }
-        }
-
-        return remoteProcessGroupStatus;
-    }
-
-    @Override
-    public ClusterRemoteProcessGroupStatusDTO getClusterRemoteProcessGroupStatus(String remoteProcessGroupId) {
-        final ClusterRemoteProcessGroupStatusDTO clusterRemoteProcessGroupStatusDto = new ClusterRemoteProcessGroupStatusDTO();
-        clusterRemoteProcessGroupStatusDto.setNodeRemoteProcessGroupStatus(new ArrayList<NodeRemoteProcessGroupStatusDTO>());
-
-        // set the current time
-        clusterRemoteProcessGroupStatusDto.setStatsLastRefreshed(new Date());
-
-        final Set<Node> nodes = clusterManager.getNodes(Node.Status.CONNECTED);
-        boolean firstNode = true;
-        for (final Node node : nodes) {
-
-            final HeartbeatPayload nodeHeartbeatPayload = node.getHeartbeatPayload();
-            if (nodeHeartbeatPayload == null) {
-                continue;
-            }
-
-            final ProcessGroupStatus nodeStats = nodeHeartbeatPayload.getProcessGroupStatus();
-            if (nodeStats == null || nodeStats.getProcessorStatus() == null) {
-                continue;
-            }
-
-            // find the remote process group for this node
-            final RemoteProcessGroupStatus remoteProcessGroupStatus = findNodeRemoteProcessGroupStatus(nodeStats, remoteProcessGroupId);
-
-            // sanity check that we have status for this remote process group
-            if (remoteProcessGroupStatus == null) {
-                throw new ResourceNotFoundException(String.format("Unable to find status for remote process group id '%s'.", remoteProcessGroupId));
-            }
-
-            if (firstNode) {
-                clusterRemoteProcessGroupStatusDto.setRemoteProcessGroupId(remoteProcessGroupId);
-                clusterRemoteProcessGroupStatusDto.setRemoteProcessGroupName(remoteProcessGroupStatus.getName());
-                firstNode = false;
-            }
-
-            // create node remote process group status dto
-            final NodeRemoteProcessGroupStatusDTO nodeRemoteProcessGroupStatusDTO = new NodeRemoteProcessGroupStatusDTO();
-            clusterRemoteProcessGroupStatusDto.getNodeRemoteProcessGroupStatus().add(nodeRemoteProcessGroupStatusDTO);
-
-            // populate node remote process group status dto
-            final String nodeId = node.getNodeId().getId();
-            nodeRemoteProcessGroupStatusDTO.setNode(dtoFactory.createNodeDTO(node, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId)));
-            nodeRemoteProcessGroupStatusDTO.setRemoteProcessGroupStatus(dtoFactory.createRemoteProcessGroupStatusDto(remoteProcessGroupStatus));
-        }
-
-        return clusterRemoteProcessGroupStatusDto;
-    }
-
-    @Override
-    public ClusterStatusHistoryDTO getClusterProcessorStatusHistory(String processorId) {
-        return clusterManager.getProcessorStatusHistory(processorId);
-    }
-
-    @Override
-    public ClusterStatusHistoryDTO getClusterConnectionStatusHistory(String connectionId) {
-        return clusterManager.getConnectionStatusHistory(connectionId);
-    }
-
-    @Override
-    public ClusterStatusHistoryDTO getClusterProcessGroupStatusHistory(String processGroupId) {
-        return clusterManager.getProcessGroupStatusHistory(processGroupId);
-    }
-
-    @Override
-    public ClusterStatusHistoryDTO getClusterRemoteProcessGroupStatusHistory(String remoteProcessGroupId) {
-        return clusterManager.getRemoteProcessGroupStatusHistory(remoteProcessGroupId);
-    }
-
-    @Override
-    public NodeStatusDTO getNodeStatus(String nodeId) {
-        // find the node in question
-        final Node node = clusterManager.getNode(nodeId);
-
-        // verify node state
-        if (node == null) {
-            throw new UnknownNodeException("Node does not exist.");
-        } else if (Node.Status.CONNECTED != node.getStatus()) {
-            throw new IllegalClusterStateException(
-                    String.format("Node '%s:%s' is not connected to the cluster.",
-                            node.getNodeId().getApiAddress(), node.getNodeId().getApiPort()));
-        }
-
-        // get the node's last heartbeat
-        final NodeStatusDTO nodeStatus = new NodeStatusDTO();
-        final HeartbeatPayload nodeHeartbeatPayload = node.getHeartbeatPayload();
-        if (nodeHeartbeatPayload == null) {
-            return nodeStatus;
-        }
-
-        // get the node status
-        final ProcessGroupStatus nodeProcessGroupStatus = nodeHeartbeatPayload.getProcessGroupStatus();
-        if (nodeProcessGroupStatus == null) {
-            return nodeStatus;
-        }
-
-        final ProcessGroupStatusDTO nodeProcessGroupStatusDto = dtoFactory.createProcessGroupStatusDto(clusterManager.getBulletinRepository(), nodeProcessGroupStatus);
-        nodeStatus.setControllerStatus(nodeProcessGroupStatusDto);
-        nodeStatus.setNode(dtoFactory.createNodeDTO(node, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId)));
-
-        return nodeStatus;
-    }
-
-    @Override
-    public NodeSystemDiagnosticsDTO getNodeSystemDiagnostics(String nodeId) {
-        // find the node in question
-        final Node node = clusterManager.getNode(nodeId);
-
-        // verify node state
-        if (node == null) {
-            throw new UnknownNodeException("Node does not exist.");
-        } else if (Node.Status.CONNECTED != node.getStatus()) {
-            throw new IllegalClusterStateException(
-                    String.format("Node '%s:%s' is not connected to the cluster.",
-                            node.getNodeId().getApiAddress(), node.getNodeId().getApiPort()));
-        }
-
-        // get the node's last heartbeat
-        final NodeSystemDiagnosticsDTO nodeStatus = new NodeSystemDiagnosticsDTO();
-        final HeartbeatPayload nodeHeartbeatPayload = node.getHeartbeatPayload();
-        if (nodeHeartbeatPayload == null) {
-            return nodeStatus;
-        }
-
-        // get the node status
-        final SystemDiagnostics nodeSystemDiagnostics = nodeHeartbeatPayload.getSystemDiagnostics();
-        if (nodeSystemDiagnostics == null) {
-            return nodeStatus;
-        }
-
-        // populate the dto
-        nodeStatus.setControllerStatus(dtoFactory.createSystemDiagnosticsDto(nodeSystemDiagnostics));
-        nodeStatus.setNode(dtoFactory.createNodeDTO(node, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId)));
-
-        return nodeStatus;
-    }
-
-    @Override
-    public ClusterStatusDTO getClusterStatus() {
-
-        // create cluster status dto
-        final ClusterStatusDTO clusterStatusDto = new ClusterStatusDTO();
-
-        // populate node status dtos
-        final Collection<NodeStatusDTO> nodeStatusDtos = new ArrayList<>();
-        clusterStatusDto.setNodeStatus(nodeStatusDtos);
-
-        for (final Node node : clusterManager.getNodes()) {
-
-            if (Node.Status.CONNECTED != node.getStatus()) {
-                continue;
-            }
-
-            final HeartbeatPayload nodeHeartbeatPayload = node.getHeartbeatPayload();
-            if (nodeHeartbeatPayload == null) {
-                continue;
-            }
-
-            final ProcessGroupStatus nodeProcessGroupStatus = nodeHeartbeatPayload.getProcessGroupStatus();
-            if (nodeProcessGroupStatus == null) {
-                continue;
-            }
-
-            final ProcessGroupStatusDTO nodeProcessGroupStatusDto = dtoFactory.createProcessGroupStatusDto(clusterManager.getBulletinRepository(), nodeProcessGroupStatus);
-
-            // create node status dto
-            final NodeStatusDTO nodeStatusDto = new NodeStatusDTO();
-            nodeStatusDtos.add(nodeStatusDto);
-
-            // populate the status
-            nodeStatusDto.setControllerStatus(nodeProcessGroupStatusDto);
-
-            // create and add node dto
-            final String nodeId = node.getNodeId().getId();
-            nodeStatusDto.setNode(dtoFactory.createNodeDTO(node, clusterManager.getNodeEvents(nodeId), isPrimaryNode(nodeId)));
-
-        }
-
-        return clusterStatusDto;
-    }
-
-    @Override
-    public ProcessorDTO getProcessor(String id) {
-        ClassLoader currentContextClassLoader = Thread.currentThread().getContextClassLoader();
-        try {
-            String groupId = controllerFacade.findProcessGroupIdForProcessor(id);
-
-            // ensure the parent group id was found
-            if (groupId == null) {
-                throw new ResourceNotFoundException(String.format("Unable to locate Processor with id '%s'.", id));
-            }
-
-            // get the processor
-            return getProcessor(groupId, id);
-        } finally {
-            if (currentContextClassLoader != null) {
-                Thread.currentThread().setContextClassLoader(currentContextClassLoader);
-            }
-        }
     }
 
     /* setters */
@@ -3560,12 +2913,12 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         this.auditService = auditService;
     }
 
-    public void setUserService(UserService userService) {
-        this.userService = userService;
+    public void setKeyService(KeyService keyService) {
+        this.keyService = keyService;
     }
 
-    public void setOptimisticLockingManager(OptimisticLockingManager optimisticLockingManager) {
-        this.optimisticLockingManager = optimisticLockingManager;
+    public void setRevisionManager(RevisionManager revisionManager) {
+        this.revisionManager = revisionManager;
     }
 
     public void setClusterManager(WebClusterManager clusterManager) {
@@ -3574,6 +2927,10 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
 
     public void setDtoFactory(DtoFactory dtoFactory) {
         this.dtoFactory = dtoFactory;
+    }
+
+    public void setEntityFactory(EntityFactory entityFactory) {
+        this.entityFactory = entityFactory;
     }
 
     public void setInputPortDAO(PortDAO inputPortDAO) {
@@ -3604,137 +2961,19 @@ public class StandardNiFiServiceFacade implements NiFiServiceFacade {
         this.snippetUtils = snippetUtils;
     }
 
+    public void setAuthorizer(Authorizer authorizer) {
+        this.authorizer = authorizer;
+    }
+
     private boolean isPrimaryNode(String nodeId) {
         final Node primaryNode = clusterManager.getPrimaryNode();
         return (primaryNode != null && primaryNode.getNodeId().getId().equals(nodeId));
     }
 
-    /**
-     * Utility method to get the oldest of the two specified dates.
-     */
-    private Date getOldestDate(final Date date1, final Date date2) {
-        if (date1 == null && date2 == null) {
-            return null;
-        } else if (date1 == null) {
-            return date2;
-        } else if (date2 == null) {
-            return date1;
-        }
-
-        if (date1.before(date2)) {
-            return date1;
-        } else if (date1.after(date2)) {
-            return date2;
-        } else {
-            return date1;
-        }
-    }
-
-    /**
-     * Utility method to get the newest of the two specified dates.
-     */
-    private Date getNewestDate(final Date date1, final Date date2) {
-        if (date1 == null && date2 == null) {
-            return null;
-        } else if (date1 == null) {
-            return date2;
-        } else if (date2 == null) {
-            return date1;
-        }
-
-        if (date1.before(date2)) {
-            return date2;
-        } else if (date1.after(date2)) {
-            return date1;
-        } else {
-            return date1;
-        }
-    }
-
-    /**
-     * Utility method for extracting component counts from the specified group status.
-     */
-    private ProcessGroupCounts extractProcessGroupCounts(ProcessGroupStatus groupStatus) {
-        int running = 0;
-        int stopped = 0;
-        int invalid = 0;
-        int disabled = 0;
-        int activeRemotePorts = 0;
-        int inactiveRemotePorts = 0;
-
-        for (final ProcessorStatus processorStatus : groupStatus.getProcessorStatus()) {
-            switch (processorStatus.getRunStatus()) {
-                case Disabled:
-                    disabled++;
-                    break;
-                case Running:
-                    running++;
-                    break;
-                case Invalid:
-                    invalid++;
-                    break;
-                default:
-                    stopped++;
-                    break;
-            }
-        }
-
-        for (final PortStatus portStatus : groupStatus.getInputPortStatus()) {
-            switch (portStatus.getRunStatus()) {
-                case Disabled:
-                    disabled++;
-                    break;
-                case Running:
-                    running++;
-                    break;
-                case Invalid:
-                    invalid++;
-                    break;
-                default:
-                    stopped++;
-                    break;
-            }
-        }
-
-        for (final PortStatus portStatus : groupStatus.getOutputPortStatus()) {
-            switch (portStatus.getRunStatus()) {
-                case Disabled:
-                    disabled++;
-                    break;
-                case Running:
-                    running++;
-                    break;
-                case Invalid:
-                    invalid++;
-                    break;
-                default:
-                    stopped++;
-                    break;
-            }
-        }
-
-        for (final RemoteProcessGroupStatus remoteStatus : groupStatus.getRemoteProcessGroupStatus()) {
-            if (remoteStatus.getActiveRemotePortCount() != null) {
-                activeRemotePorts += remoteStatus.getActiveRemotePortCount();
-            }
-            if (remoteStatus.getInactiveRemotePortCount() != null) {
-                inactiveRemotePorts += remoteStatus.getInactiveRemotePortCount();
-            }
-            if (CollectionUtils.isNotEmpty(remoteStatus.getAuthorizationIssues())) {
-                invalid++;
-            }
-        }
-
-        for (final ProcessGroupStatus childGroupStatus : groupStatus.getProcessGroupStatus()) {
-            final ProcessGroupCounts childCounts = extractProcessGroupCounts(childGroupStatus);
-            running += childCounts.getRunningCount();
-            stopped += childCounts.getStoppedCount();
-            invalid += childCounts.getInvalidCount();
-            disabled += childCounts.getDisabledCount();
-            activeRemotePorts += childCounts.getActiveRemotePortCount();
-            inactiveRemotePorts += childCounts.getInactiveRemotePortCount();
-        }
-
-        return new ProcessGroupCounts(0, 0, running, stopped, invalid, disabled, activeRemotePorts, inactiveRemotePorts);
+    private AccessPolicyDTO allAccess() {
+        final AccessPolicyDTO dto = new AccessPolicyDTO();
+        dto.setCanRead(true);
+        dto.setCanWrite(true);
+        return dto;
     }
 }

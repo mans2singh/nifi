@@ -24,8 +24,8 @@ nf.GoTo = (function () {
 
     var config = {
         urls: {
-            controller: '../nifi-api/controller',
-            processGroups: '../nifi-api/controller/process-groups/'
+            api: '../nifi-api',
+            processGroups: '../nifi-api/process-groups/'
         }
     };
 
@@ -156,7 +156,7 @@ nf.GoTo = (function () {
     var addDestinationInputPort = function (container, connection) {
         // get the remote process group
         return getProcessGroup(connection.destination.groupId).done(function (response) {
-            var processGroup = response.processGroup;
+            var processGroup = response.component;
 
             // process group
             var downstreamComponent = $('<div class="destination-component"></div>').appendTo(container);
@@ -263,7 +263,7 @@ nf.GoTo = (function () {
     var addSourceOutputPort = function (container, connection) {
         // get the remote process group
         return getProcessGroup(connection.source.groupId).done(function (response) {
-            var processGroup = response.processGroup;
+            var processGroup = response.component;
 
             // process group
             var sourceComponent = $('<div class="source-component"></div>').appendTo(container);
@@ -350,7 +350,7 @@ nf.GoTo = (function () {
 
             $.ajax({
                 type: 'GET',
-                url: config.urls.controller + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
+                url: config.urls.api + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
                 dataType: 'json'
             }).done(function (response) {
                 var connections = response.connections;
@@ -364,7 +364,7 @@ nf.GoTo = (function () {
                 // add the destination for each connection
                 $.each(connections, function (_, connection) {
                     // only show connections for which this selection is the source
-                    if (connection.source.id === selectionData.component.id) {
+                    if (connection.source.id === selectionData.id) {
                         addConnection(connection);
                     }
                 });
@@ -389,7 +389,7 @@ nf.GoTo = (function () {
 
             $.ajax({
                 type: 'GET',
-                url: config.urls.controller + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
+                url: config.urls.api + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
                 dataType: 'json'
             }).done(function (response) {
                 var connections = response.connections;
@@ -403,7 +403,7 @@ nf.GoTo = (function () {
                 // add the source for each connection
                 $.each(connections, function (_, connection) {
                     // only show connections for which this selection is the destination
-                    if (connection.destination.id === selectionData.component.id) {
+                    if (connection.destination.id === selectionData.id) {
                         addConnection(connection);
                     }
                 });
@@ -428,7 +428,7 @@ nf.GoTo = (function () {
 
             $.ajax({
                 type: 'GET',
-                url: config.urls.controller + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
+                url: config.urls.api + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
                 dataType: 'json'
             }).done(function (response) {
                 var connections = response.connections;
@@ -442,7 +442,7 @@ nf.GoTo = (function () {
                 // add the destination for each connection
                 $.each(connections, function (_, connection) {
                     // only show connections for which this selection is the source
-                    if (connection.source.groupId === selectionData.component.id) {
+                    if (connection.source.groupId === selectionData.id) {
                         addConnection(connection);
                     }
                 });
@@ -467,7 +467,7 @@ nf.GoTo = (function () {
 
             $.ajax({
                 type: 'GET',
-                url: config.urls.controller + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
+                url: config.urls.api + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
                 dataType: 'json'
             }).done(function (response) {
                 var connections = response.connections;
@@ -481,7 +481,7 @@ nf.GoTo = (function () {
                 // add the source for each connection
                 $.each(connections, function (_, connection) {
                     // only show connections for which this selection is the destination
-                    if (connection.destination.groupId === selectionData.component.id) {
+                    if (connection.destination.groupId === selectionData.id) {
                         addConnection(connection);
                     }
                 });
@@ -506,7 +506,7 @@ nf.GoTo = (function () {
 
             $.ajax({
                 type: 'GET',
-                url: config.urls.controller + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
+                url: config.urls.api + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
                 dataType: 'json'
             }).done(function (response) {
                 var connections = response.connections;
@@ -520,7 +520,7 @@ nf.GoTo = (function () {
                 // add the destination for each connection
                 $.each(connections, function (_, connection) {
                     // only show connections for which this selection is the source
-                    if (connection.source.id === selectionData.component.id) {
+                    if (connection.source.id === selectionData.id) {
                         addConnection(connection);
                     }
                 });
@@ -545,7 +545,7 @@ nf.GoTo = (function () {
 
             $.ajax({
                 type: 'GET',
-                url: config.urls.controller + '/process-groups/' + encodeURIComponent(nf.Canvas.getParentGroupId()) + '/connections',
+                url: config.urls.api + '/process-groups/' + encodeURIComponent(nf.Canvas.getParentGroupId()) + '/connections',
                 dataType: 'json'
             }).done(function (response) {
                 var connections = response.connections;
@@ -562,7 +562,7 @@ nf.GoTo = (function () {
                 // add the source for each connection
                 $.each(connections, function (_, connection) {
                     // only show connections for which this selection is the destination
-                    if (connection.destination.id === selectionData.component.id) {
+                    if (connection.destination.id === selectionData.id) {
                         addConnection(connection);
                     }
                 });
@@ -587,7 +587,7 @@ nf.GoTo = (function () {
 
             $.ajax({
                 type: 'GET',
-                url: config.urls.controller + '/process-groups/' + encodeURIComponent(nf.Canvas.getParentGroupId()) + '/connections',
+                url: config.urls.api + '/process-groups/' + encodeURIComponent(nf.Canvas.getParentGroupId()) + '/connections',
                 dataType: 'json'
             }).done(function (response) {
                 var connections = response.connections;
@@ -604,7 +604,7 @@ nf.GoTo = (function () {
                 // add the destination for each connection
                 $.each(connections, function (_, connection) {
                     // only show connections for which this selection is the source
-                    if (connection.source.id === selectionData.component.id) {
+                    if (connection.source.id === selectionData.id) {
                         addConnection(connection);
                     }
                 });
@@ -629,7 +629,7 @@ nf.GoTo = (function () {
 
             $.ajax({
                 type: 'GET',
-                url: config.urls.controller + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
+                url: config.urls.api + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
                 dataType: 'json'
             }).done(function (response) {
                 var connections = response.connections;
@@ -643,7 +643,7 @@ nf.GoTo = (function () {
                 // add the source for each connection
                 $.each(connections, function (_, connection) {
                     // only show connections for which this selection is the destination
-                    if (connection.destination.id === selectionData.component.id) {
+                    if (connection.destination.id === selectionData.id) {
                         addConnection(connection);
                     }
                 });
@@ -668,7 +668,7 @@ nf.GoTo = (function () {
 
             $.ajax({
                 type: 'GET',
-                url: config.urls.controller + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
+                url: config.urls.api + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
                 dataType: 'json'
             }).done(function (response) {
                 var connections = response.connections;
@@ -679,7 +679,7 @@ nf.GoTo = (function () {
                 // add the destination for each connection
                 $.each(connections, function (_, connection) {
                     // only show connections for which this selection is the source
-                    if (connection.source.id === selectionData.component.id) {
+                    if (connection.source.id === selectionData.id) {
                         addConnection(connection);
                     }
                 });
@@ -704,7 +704,7 @@ nf.GoTo = (function () {
 
             $.ajax({
                 type: 'GET',
-                url: config.urls.controller + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
+                url: config.urls.api + '/process-groups/' + encodeURIComponent(selectionData.component.parentGroupId) + '/connections',
                 dataType: 'json'
             }).done(function (response) {
                 var connections = response.connections;
@@ -715,7 +715,7 @@ nf.GoTo = (function () {
                 // add the source for each connection
                 $.each(connections, function (_, connection) {
                     // only show connections for which this selection is the destination
-                    if (connection.destination.id === selectionData.component.id) {
+                    if (connection.destination.id === selectionData.id) {
                         addConnection(connection);
                     }
                 });
