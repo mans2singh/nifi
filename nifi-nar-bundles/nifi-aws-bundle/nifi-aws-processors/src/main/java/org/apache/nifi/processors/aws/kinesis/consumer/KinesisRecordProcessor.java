@@ -52,4 +52,12 @@ public class KinesisRecordProcessor implements IRecordProcessor {
         delegate.shutdown(shutdownInput, initializationInput);
     }
 
+    protected RecordsHandler getDelegate() {
+        return delegate;
+    }
+
+    protected InitializationInput getInitializationInput() {
+        return initializationInput;
+    }
+
 }
