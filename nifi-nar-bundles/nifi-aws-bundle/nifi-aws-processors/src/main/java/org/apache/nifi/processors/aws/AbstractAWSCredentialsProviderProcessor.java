@@ -17,7 +17,6 @@
 package org.apache.nifi.processors.aws;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.lifecycle.OnShutdown;
-import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.ControllerService;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderService;
