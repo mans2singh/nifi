@@ -16,7 +16,11 @@
  */
 package org.apache.nifi.processors.aws.kinesis.consumer;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Set;
 
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
@@ -25,6 +29,9 @@ import org.apache.nifi.processor.exception.ProcessException;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
+import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
 
 public class TestAbstractKinesisConsumerProcessor {
 
@@ -77,5 +84,22 @@ public class TestAbstractKinesisConsumerProcessor {
         Mockito.verify(mockProcessSessionFactory1, Mockito.times(2)).createSession();
         Mockito.verify(mockProcessSession1).commit();
         Mockito.verify(mockProcessSession2).commit();
+    }
+
+    @Test
+    public void testInitialPositionsAllowableValues() {
+        Set<String> initialPositions = AbstractKinesisConsumerProcessor.getInitialPositions();
+        assertEquals(2, initialPositions.size());
+        assertTrue(initialPositions.contains(InitialPositionInStream.LATEST.toString()));
+        assertTrue(initialPositions.contains(InitialPositionInStream.TRIM_HORIZON.toString()));
+    }
+
+    @Test
+    public void testMetricsLevelAllowableValues() {
+        Set<String> values = AbstractKinesisConsumerProcessor.getMetricsAllowableValues();
+        assertEquals(3, values.size());
+        assertTrue(values.contains(MetricsLevel.DETAILED.toString()));
+        assertTrue(values.contains(MetricsLevel.SUMMARY.toString()));
+        assertTrue(values.contains(MetricsLevel.NONE.toString()));
     }
 }
