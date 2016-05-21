@@ -194,11 +194,11 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
 
     @Override
     public void onTrigger(ProcessContext context, ProcessSessionFactory sessionFactory) throws ProcessException {
-        super.onTrigger(context, sessionFactory);
         sessionFactoryReference.compareAndSet(null, sessionFactory);
+        super.onTrigger(context, sessionFactoryReference.get());
     }
 
-    private static Set<String> getMetricsAllowableValues() {
+    protected static Set<String> getMetricsAllowableValues() {
         Set<String> values = new HashSet<>();
         for (MetricsLevel ml : MetricsLevel.values()) {
             values.add(ml.name());
@@ -206,7 +206,7 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
         return values;
     }
 
-    private static Set<String> getInitialPositions() {
+    protected static Set<String> getInitialPositions() {
         Set<String> values = new HashSet<>();
         for (InitialPositionInStream ipis : InitialPositionInStream.values()) {
             values.add(ipis.name());
