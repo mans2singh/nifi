@@ -32,6 +32,10 @@ public class KinesisRecordProcessorFactory implements IRecordProcessorFactory {
      */
     protected RecordsHandler recordsHandler;
 
+    /**
+     * Kinesis record processor factory constructor
+     * @param recordsHandler the records handler
+     */
     public KinesisRecordProcessorFactory(RecordsHandler recordsHandler) {
         this.recordsHandler = recordsHandler;
     }

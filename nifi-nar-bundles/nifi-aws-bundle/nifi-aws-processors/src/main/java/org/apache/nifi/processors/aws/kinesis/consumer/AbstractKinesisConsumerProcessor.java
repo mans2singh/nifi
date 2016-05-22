@@ -189,7 +189,9 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
             .defaultValue(MetricsLevel.DETAILED.name())
             .build();
 
-
+    /**
+     * The procession session factory reference
+     */
     private final AtomicReference<ProcessSessionFactory> sessionFactoryReference = new AtomicReference<>();
 
     @Override
@@ -198,6 +200,10 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
         super.onTrigger(context, sessionFactoryReference.get());
     }
 
+    /**
+     * Get the metrics levels for reporting to AWS
+     * @return metric levels
+     */
     protected static Set<String> getMetricsAllowableValues() {
         Set<String> values = new HashSet<>();
         for (MetricsLevel ml : MetricsLevel.values()) {
@@ -206,6 +212,10 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
         return values;
     }
 
+    /**
+     * Get the initial positions options to indicate where to start the stream
+     * @return initial position options
+     */
     protected static Set<String> getInitialPositions() {
         Set<String> values = new HashSet<>();
         for (InitialPositionInStream ipis : InitialPositionInStream.values()) {
@@ -214,6 +224,10 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
         return values;
     }
 
+    /**
+     * Get reference to ProcessSessionFactory
+     * @return the process session factory
+     */
     protected ProcessSessionFactory getSessionFactory() {
         return sessionFactoryReference.get();
     }

@@ -29,9 +29,20 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
  */
 public class KinesisRecordProcessor implements IRecordProcessor {
 
+    /**
+     * The record handler delegate
+     */
     protected RecordsHandler delegate;
+
+    /**
+     * The initialization input
+     */
     protected InitializationInput initializationInput;
 
+    /**
+     * The kinesis record processor constructor
+     * @param recordsHandler the record handler
+     */
     public KinesisRecordProcessor(RecordsHandler recordsHandler) {
         this.delegate = recordsHandler;
     }
@@ -52,10 +63,18 @@ public class KinesisRecordProcessor implements IRecordProcessor {
         delegate.shutdown(shutdownInput, initializationInput);
     }
 
+    /**
+     * The delegate record handler
+     * @return the records handler
+     */
     protected RecordsHandler getDelegate() {
         return delegate;
     }
 
+    /**
+     * Get the initialization input
+     * @return the initialization input
+     */
     protected InitializationInput getInitializationInput() {
         return initializationInput;
     }
