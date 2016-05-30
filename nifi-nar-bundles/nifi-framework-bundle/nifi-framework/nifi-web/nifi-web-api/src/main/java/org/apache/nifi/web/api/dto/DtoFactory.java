@@ -133,6 +133,8 @@ import org.apache.nifi.web.api.dto.status.ProcessorStatusDTO;
 import org.apache.nifi.web.api.dto.status.ProcessorStatusSnapshotDTO;
 import org.apache.nifi.web.api.dto.status.RemoteProcessGroupStatusDTO;
 import org.apache.nifi.web.api.dto.status.RemoteProcessGroupStatusSnapshotDTO;
+import org.apache.nifi.web.api.entity.FlowBreadcrumbEntity;
+import org.apache.nifi.web.controller.ControllerFacade;
 import org.apache.nifi.web.revision.RevisionManager;
 
 import javax.ws.rs.WebApplicationException;
@@ -153,6 +155,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
@@ -172,6 +175,22 @@ public final class DtoFactory {
     private ControllerServiceProvider controllerServiceProvider;
     private EntityFactory entityFactory;
     private Authorizer authorizer;
+
+    public ControllerConfigurationDTO createControllerConfigurationDto(final ControllerFacade controllerFacade, final String autoRefreshInterval) {
+        final ControllerConfigurationDTO dto = new ControllerConfigurationDTO();
+        dto.setMaxTimerDrivenThreadCount(controllerFacade.getMaxTimerDrivenThreadCount());
+        dto.setMaxEventDrivenThreadCount(controllerFacade.getMaxEventDrivenThreadCount());
+
+        // get the refresh interval
+        final long refreshInterval = FormatUtils.getTimeDuration(autoRefreshInterval, TimeUnit.SECONDS);
+        dto.setAutoRefreshIntervalSeconds(refreshInterval);
+
+        final Date now = new Date();
+        dto.setTimeOffset(TimeZone.getDefault().getOffset(now.getTime()));
+        dto.setCurrentTime(now);
+
+        return dto;
+    }
 
     /**
      * Creates an ActionDTO for the specified Action.
@@ -681,7 +700,6 @@ public final class DtoFactory {
         final SnippetDTO dto = new SnippetDTO();
         dto.setId(snippet.getId());
         dto.setParentGroupId(snippet.getParentGroupId());
-        dto.setLinked(snippet.isLinked());
 
         // populate the snippet contents ids
         dto.setConnections(mapRevisionToDto(snippet.getConnections()));
@@ -1143,6 +1161,7 @@ public final class DtoFactory {
     public ControllerServiceDTO createControllerServiceDto(final ControllerServiceNode controllerServiceNode) {
         final ControllerServiceDTO dto = new ControllerServiceDTO();
         dto.setId(controllerServiceNode.getIdentifier());
+        dto.setParentGroupId(controllerServiceNode.getProcessGroup() == null ? null : controllerServiceNode.getProcessGroup().getIdentifier());
         dto.setName(controllerServiceNode.getName());
         dto.setType(controllerServiceNode.getControllerServiceImplementation().getClass().getName());
         dto.setState(controllerServiceNode.getState().name());
@@ -1398,27 +1417,51 @@ public final class DtoFactory {
     }
 
     /**
-     * Creates a FlowBreadcrumbDTO from the specified parent ProcessGroup.
+     * Creates a FlowBreadcrumbEntity from the specified parent ProcessGroup.
      *
-     * @param parentGroup group
+     * @param group group
      * @return dto
      */
-    private FlowBreadcrumbDTO createBreadcrumbDto(final ProcessGroup parentGroup) {
-        if (parentGroup == null) {
+    private FlowBreadcrumbEntity createBreadcrumbEntity(final ProcessGroup group) {
+        if (group == null) {
+            return null;
+        }
+
+        final FlowBreadcrumbDTO dto = createBreadcrumbDto(group);
+        final AccessPolicyDTO accessPolicy = createAccessPolicyDto(group);
+        final FlowBreadcrumbEntity entity = entityFactory.createFlowBreadcrumbEntity(dto, accessPolicy);
+
+        if (group.getParent() != null) {
+            entity.setParentBreadcrumb(createBreadcrumbEntity(group.getParent()));
+        }
+
+        return entity;
+    }
+
+    /**
+     * Creates a FlowBreadcrumbDTO from the specified parent ProcessGroup.
+     *
+     * @param group group
+     * @return dto
+     */
+    private FlowBreadcrumbDTO createBreadcrumbDto(final ProcessGroup group) {
+        if (group == null) {
             return null;
         }
 
         final FlowBreadcrumbDTO dto = new FlowBreadcrumbDTO();
-        dto.setId(parentGroup.getIdentifier());
-        dto.setName(parentGroup.getName());
-
-        if (parentGroup.getParent() != null) {
-            dto.setParentBreadcrumb(createBreadcrumbDto(parentGroup.getParent()));
-        }
+        dto.setId(group.getIdentifier());
+        dto.setName(group.getName());
 
         return dto;
     }
 
+    /**
+     * Creates the AccessPolicyDTO based on the specified Authorizable.
+     *
+     * @param authorizable authorizable
+     * @return dto
+     */
     public AccessPolicyDTO createAccessPolicyDto(final Authorizable authorizable) {
         final AccessPolicyDTO dto = new AccessPolicyDTO();
         dto.setCanRead(authorizable.isAuthorized(authorizer, RequestAction.READ));
@@ -1440,7 +1483,7 @@ public final class DtoFactory {
         final ProcessGroupFlowDTO dto = new ProcessGroupFlowDTO();
         dto.setId(group.getIdentifier());
         dto.setLastRefreshed(new Date());
-        dto.setBreadcrumb(createBreadcrumbDto(group));
+        dto.setBreadcrumb(createBreadcrumbEntity(group));
         dto.setFlow(createFlowDto(group, groupStatus, revisionManager));
 
         final ProcessGroup parent = group.getParent();
@@ -1466,11 +1509,6 @@ public final class DtoFactory {
                 connectionStatus -> createConnectionStatusDto(connectionStatus)
             );
             flow.getConnections().add(entityFactory.createConnectionEntity(connection, null, accessPolicy, status));
-        }
-
-        for (final ControllerServiceDTO controllerService : snippet.getControllerServices()) {
-            final RevisionDTO revision = createRevisionDTO(revisionManager.getRevision(controllerService.getId()));
-            flow.getControllerServices().add(entityFactory.createControllerServiceEntity(controllerService, revision, null));
         }
 
         for (final FunnelDTO funnel : snippet.getFunnels()) {
@@ -1625,13 +1663,6 @@ public final class DtoFactory {
                 outputPortStatus -> createPortStatusDto(outputPortStatus)
             );
             dto.getOutputPorts().add(entityFactory.createPortEntity(createPortDto(outputPort), revision, accessPolicy, status));
-        }
-
-        // TODO - controller services once they are accessible from the group
-        for (final ControllerServiceNode controllerService : group.getControllerServices(false)) {
-            final RevisionDTO revision = createRevisionDTO(revisionManager.getRevision(controllerService.getIdentifier()));
-            final AccessPolicyDTO accessPolicy = createAccessPolicyDto(controllerService);
-            dto.getControllerServices().add(entityFactory.createControllerServiceEntity(createControllerServiceDto(controllerService), revision, accessPolicy));
         }
 
         return dto;
@@ -2522,7 +2553,6 @@ public final class DtoFactory {
         copy.setOutputPortCount(original.getOutputPortCount());
         copy.setParentGroupId(original.getParentGroupId());
 
-        copy.setRunning(original.isRunning());
         copy.setRunningCount(original.getRunningCount());
         copy.setStoppedCount(original.getStoppedCount());
         copy.setDisabledCount(original.getDisabledCount());
