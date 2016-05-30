@@ -59,9 +59,6 @@ public class ITPutKinesis {
         runner = null;
     }
 
-    /**
-     * Comment out ignore for integration tests (requires creds files)
-     */
     @Test
     public void testIntegrationSuccessWithPartitionKey() throws Exception {
         runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
@@ -131,9 +128,7 @@ public class ITPutKinesis {
 
         out.assertContentEquals("test".getBytes());
     }
-    /**
-     * Comment out ignore for integration tests (requires creds files)
-     */
+
     @Test
     public void testIntegrationFailedBadStreamName() throws Exception {
         runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "bad-stream");

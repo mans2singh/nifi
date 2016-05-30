@@ -20,7 +20,9 @@ import java.io.ByteArrayInputStream;
 import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -58,7 +60,10 @@ import com.amazonaws.services.kinesis.model.Record;
 @SupportsBatching
 @InputRequirement(Requirement.INPUT_FORBIDDEN)
 @Tags({ "amazon", "aws", "kinesis", "get", "stream" })
-@CapabilityDescription("Get the records from the specified Amazon Kinesis stream")
+@CapabilityDescription("Get the records from the specified Amazon Kinesis stream. "
+        + " The Kinesis processor saves metrics information in AWS Cloud Watch and client offsets in AWS DynamoDB."
+        + "Therefore AWS credentials used for authentication must have permissions to access to AWS Cloud Formation and AWS DynamodDB."
+)
 @WritesAttributes({
     @WritesAttribute(attribute = GetKinesis.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP, description = "Approximate arrival time of the record"),
     @WritesAttribute(attribute = GetKinesis.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY, description = "Partition key of the record"),
@@ -104,9 +109,7 @@ public class GetKinesis extends AbstractKinesisConsumerProcessor implements Reco
     @OnScheduled
     public void onScheduled(final ProcessContext context) throws ProcessException {
 
-        final AWSCredentialsProviderService awsCredentialsProviderService = context
-                .getProperty(GetKinesis.AWS_CREDENTIALS_PROVIDER_SERVICE)
-                .asControllerService(AWSCredentialsProviderService.class);
+        final AWSCredentialsProviderService awsCredentialsProviderService = getAWSCredentialsProviderService(context);
 
         streamName = context.getProperty(GetKinesis.KINESIS_STREAM_NAME).getValue();
         KinesisClientLibConfiguration config;
@@ -115,7 +118,7 @@ public class GetKinesis extends AbstractKinesisConsumerProcessor implements Reco
             config = new KinesisClientLibConfiguration(
                 context.getProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME).getValue(),
                 context.getProperty(GetKinesis.KINESIS_STREAM_NAME).getValue(),
-                awsCredentialsProviderService.getCredentialsProvider(),
+                    awsCredentialsProviderService.getCredentialsProvider(),
                 context.getProperty(GetKinesis.KINESIS_CONSUMER_WORKER_ID_PREFIX).getValue()+ ":"
                     + InetAddress.getLocalHost().getCanonicalHostName() + ":" + UUID.randomUUID().toString())
                     .withRegionName(context.getProperty(GetKinesis.REGION).getValue())
@@ -139,16 +142,39 @@ public class GetKinesis extends AbstractKinesisConsumerProcessor implements Reco
             config.withMaxRecords(batchSize);
 
             KinesisRecordProcessorFactory kinesisRecordProcessorFactory = new KinesisRecordProcessorFactory(this);
-            consumerWorker = new Worker
-                .Builder()
-                .recordProcessorFactory(kinesisRecordProcessorFactory)
-                .config(config)
-                .build();
+
+            consumerWorker = makeWorker(config, kinesisRecordProcessorFactory);
 
             executor.execute(consumerWorker);
         } catch (Exception e) {
             throw new ProcessException(e);
         }
+    }
+
+    /**
+     * Helper method to get credentials service
+     * @param context the process context
+     * @return return aws creds provider service
+     */
+    protected AWSCredentialsProviderService getAWSCredentialsProviderService(final ProcessContext context) {
+        return context
+                .getProperty(GetKinesis.AWS_CREDENTIALS_PROVIDER_SERVICE)
+                .asControllerService(AWSCredentialsProviderService.class);
+    }
+
+    /**
+     * Helper method to create worker
+     * @param config kinesis config
+     * @param kinesisRecordProcessorFactory record processor factory
+     * @return return the worker
+     */
+    protected Worker makeWorker(KinesisClientLibConfiguration config,
+            KinesisRecordProcessorFactory kinesisRecordProcessorFactory) {
+        return new Worker
+            .Builder()
+            .recordProcessorFactory(kinesisRecordProcessorFactory)
+            .config(config)
+            .build();
     }
 
     @OnShutdown
@@ -168,8 +194,10 @@ public class GetKinesis extends AbstractKinesisConsumerProcessor implements Reco
         Record lastRecordProcessed = null;
         int processedRecords = 0;
         long timestamp = System.currentTimeMillis();
+
         FlowFile flowFile = null;
         ProcessSession session = getSessionFactory().createSession();
+
         try {
             for (Record record : processRecordsInput.getRecords()) {
                 flowFile = session.create();
@@ -177,14 +205,9 @@ public class GetKinesis extends AbstractKinesisConsumerProcessor implements Reco
                 ByteArrayInputStream baos = new ByteArrayInputStream(record.getData().array());
                 flowFile = session.importFrom(baos, flowFile);
 
-                flowFile = session.putAttribute(flowFile, AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY, record.getPartitionKey());
-                flowFile = session.putAttribute(flowFile, AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER, record.getSequenceNumber());
-                flowFile = session.putAttribute(flowFile, AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND,
-                    Long.toString(processRecordsInput.getMillisBehindLatest()));
-                flowFile = session.putAttribute(flowFile, AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP,
-                    Long.toString(record.getApproximateArrivalTimestamp().getTime()));
-                flowFile = session.putAttribute(flowFile, KINESIS_CONSUMER_RECORD_START_TIMESTAMP, Long.toString(timestamp));
-                flowFile = session.putAttribute(flowFile, KINESIS_CONSUMER_RECORD_NUBMER, Integer.toString(processedRecords));
+                Map<String, String> attributes = createAttributes(processRecordsInput,
+                        processedRecords, timestamp, record);
+                flowFile = session.putAllAttributes(flowFile, attributes);
 
                 session.transfer(flowFile, REL_SUCCESS);
 
@@ -210,6 +233,21 @@ public class GetKinesis extends AbstractKinesisConsumerProcessor implements Reco
             }
             session.commit();
         }
+    }
+
+    protected Map<String,String> createAttributes(ProcessRecordsInput processRecordsInput, int processedRecords, long timestamp,
+            Record record) {
+        Map<String,String> attributes = new HashMap<>();
+        attributes.put( AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY, record.getPartitionKey());
+        attributes.put( AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER, record.getSequenceNumber());
+        attributes.put( AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND,
+            Long.toString(processRecordsInput.getMillisBehindLatest()));
+        attributes.put( AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP,
+            Long.toString(record.getApproximateArrivalTimestamp().getTime()));
+        attributes.put( KINESIS_CONSUMER_RECORD_START_TIMESTAMP, Long.toString(timestamp));
+        attributes.put( KINESIS_CONSUMER_RECORD_NUBMER, Integer.toString(processedRecords));
+
+        return attributes;
     }
 
     /**

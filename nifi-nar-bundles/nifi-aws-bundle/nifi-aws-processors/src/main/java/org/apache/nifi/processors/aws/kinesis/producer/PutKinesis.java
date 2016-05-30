@@ -51,7 +51,10 @@ import com.amazonaws.services.kinesis.producer.Attempt;
 @SupportsBatching
 @InputRequirement(Requirement.INPUT_REQUIRED)
 @Tags({"amazon", "aws", "kinesis", "put", "stream"})
-@CapabilityDescription("Sends the contents of the flowfile to a specified Amazon Kinesis stream")
+@CapabilityDescription("Sends the contents of the flowfile to a specified Amazon Kinesis stream."
+        + " The Kinesis processor saves metrics information in AWS Cloud Watch and client offsets in AWS DynamoDB."
+        + "Therefore AWS credentials used for authentication must have permissions to access to AWS Cloud Formation and AWS DynamodDB."
+        )
 @ReadsAttribute(attribute = PutKinesis.AWS_KINESIS_PARTITION_KEY, description = "Partition key to be used for publishing data to kinesis.  If it is not available then a random key used")
 @WritesAttributes({
     @WritesAttribute(attribute = PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL, description = "Was the record posted successfully"),
@@ -113,6 +116,34 @@ public class PutKinesis extends AbstractKinesisProducerProcessor {
 
     protected KinesisProducer producer;
 
+    /**
+     * @return the producer
+     */
+    protected KinesisProducer getProducer() {
+        return producer;
+    }
+
+    /**
+     * @param producer the producer to set
+     */
+    protected void setProducer(KinesisProducer producer) {
+        this.producer = producer;
+    }
+
+    /**
+     * @return the randomGenerator
+     */
+    protected Random getRandomGenerator() {
+        return randomGenerator;
+    }
+
+    /**
+     * @param randomGenerator the randomGenerator to set
+     */
+    protected void setRandomGenerator(Random randomGenerator) {
+        this.randomGenerator = randomGenerator;
+    }
+
     protected Random randomGenerator;
 
     @Override
@@ -156,8 +187,17 @@ public class PutKinesis extends AbstractKinesisProducerProcessor {
         config.setMetricsGranularity(context.getProperty(PutKinesis.KINESIS_PRODUCER_METRICS_GRANULARITY).getValue());
         config.setMetricsLevel(context.getProperty(PutKinesis.KINESIS_PRODUCER_METRICS_LEVEL).getValue());
 
-        producer = new KinesisProducer(config);
+        producer = makeProducer(config);
 
+    }
+
+    /**
+     * Make producer helper method
+     * @param config kinesis producer configuration
+     * @return the kinesis producer
+     */
+    protected KinesisProducer makeProducer(KinesisProducerConfiguration config) {
+        return new KinesisProducer(config);
     }
 
     @Override
@@ -182,7 +222,7 @@ public class PutKinesis extends AbstractKinesisProducerProcessor {
                 if ( StringUtils.isBlank(partitionKey) ) {
                     partitionKey = Integer.toString(randomGenerator.nextInt());
                 }
-                addRecordFutures.add(producer.addUserRecord(stream, partitionKey, ByteBuffer.wrap(baos.toByteArray()))) ;
+                addRecordFutures.add(getProducer().addUserRecord(stream, partitionKey, ByteBuffer.wrap(baos.toByteArray()))) ;
             }
 
             // Apply attributes to flow files
@@ -259,9 +299,10 @@ public class PutKinesis extends AbstractKinesisProducerProcessor {
 
     @OnShutdown
     public void onShutdown() {
-        if ( producer != null ) {
-            producer.flushSync();
-            producer.destroy();
+        if ( getProducer() != null ) {
+            getProducer().flushSync();
+            getProducer().destroy();
+            producer = null;
         }
     }
 }
