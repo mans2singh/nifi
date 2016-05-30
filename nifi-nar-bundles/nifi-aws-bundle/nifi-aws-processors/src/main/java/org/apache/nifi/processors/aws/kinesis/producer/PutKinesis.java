@@ -52,8 +52,9 @@ import com.amazonaws.services.kinesis.producer.Attempt;
 @InputRequirement(Requirement.INPUT_REQUIRED)
 @Tags({"amazon", "aws", "kinesis", "put", "stream"})
 @CapabilityDescription("Sends the contents of the flowfile to a specified Amazon Kinesis stream."
-        + " The Kinesis processor saves metrics information in AWS Cloud Watch and client offsets in AWS DynamoDB."
+        + " This Kinesis processor saves metrics information in AWS Cloud Watch and client information in AWS DynamoDB."
         + "Therefore AWS credentials used for authentication must have permissions to access to AWS Cloud Formation and AWS DynamodDB."
+        + "Also usage of AWS Cloud Watch and DynamoDB may incur additional costs."
         )
 @ReadsAttribute(attribute = PutKinesis.AWS_KINESIS_PARTITION_KEY, description = "Partition key to be used for publishing data to kinesis.  If it is not available then a random key used")
 @WritesAttributes({
