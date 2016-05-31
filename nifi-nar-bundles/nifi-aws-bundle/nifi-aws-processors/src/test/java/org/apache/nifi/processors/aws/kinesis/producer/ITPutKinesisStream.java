@@ -34,7 +34,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 //Uncomment ignore and make sure that the kinesis stream exists before running the test
-//@Ignore
+@Ignore
 public class ITPutKinesisStream {
 
     private TestRunner runner;

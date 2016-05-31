@@ -32,7 +32,6 @@ import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processors.aws.AbstractBaseAWSProcessor;
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderControllerService;
-import org.apache.nifi.processors.aws.kinesis.KinesisHelper;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
@@ -86,8 +85,10 @@ public class TestPutKinesisStream {
         runner = TestRunners.newTestRunner(putKinesis);
         final AWSCredentialsProviderControllerService serviceImpl = new AWSCredentialsProviderControllerService();
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
-        runner.setProperty(serviceImpl, AbstractBaseAWSProcessor.CREDENTIALS_FILE,
-                KinesisHelper.CREDENTIALS_FILE);
+        runner.setProperty(serviceImpl, AbstractBaseAWSProcessor.ACCESS_KEY,
+                "awsAccessKey");
+        runner.setProperty(serviceImpl, AbstractBaseAWSProcessor.SECRET_KEY,
+                "awsSecretKey");
         runner.enableControllerService(serviceImpl);
 
         runner.assertValid(serviceImpl);
