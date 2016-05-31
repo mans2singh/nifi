@@ -56,22 +56,22 @@ import com.amazonaws.services.kinesis.producer.Attempt;
         + "Therefore AWS credentials used for authentication must have permissions to access to AWS Cloud Formation and AWS DynamodDB."
         + "Also usage of AWS Cloud Watch and DynamoDB may incur additional costs."
         )
-@ReadsAttribute(attribute = PutKinesis.AWS_KINESIS_PARTITION_KEY, description = "Partition key to be used for publishing data to kinesis.  If it is not available then a random key used")
+@ReadsAttribute(attribute = PutKinesisStream.AWS_KINESIS_PARTITION_KEY, description = "Partition key to be used for publishing data to kinesis.  If it is not available then a random key used")
 @WritesAttributes({
-    @WritesAttribute(attribute = PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL, description = "Was the record posted successfully"),
-    @WritesAttribute(attribute = PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID, description = "Shard id where the record was posted"),
-    @WritesAttribute(attribute = PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER, description = "Sequence number of the posted record"),
-    @WritesAttribute(attribute = PutKinesis.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_COUNT, description = "Number of attempts for posting the record"),
-    @WritesAttribute(attribute = PutKinesis.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_PREFIX + "<n>" + PutKinesis.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_ERROR_CODE_SUFFIX , description =
+    @WritesAttribute(attribute = PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL, description = "Was the record posted successfully"),
+    @WritesAttribute(attribute = PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID, description = "Shard id where the record was posted"),
+    @WritesAttribute(attribute = PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER, description = "Sequence number of the posted record"),
+    @WritesAttribute(attribute = PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_COUNT, description = "Number of attempts for posting the record"),
+    @WritesAttribute(attribute = PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_PREFIX + "<n>" + PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_ERROR_CODE_SUFFIX , description =
         "Attempt error code for each attempt"),
-    @WritesAttribute(attribute = PutKinesis.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_PREFIX + "<n>" + PutKinesis.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_DELAY_SUFFIX , description =
+    @WritesAttribute(attribute = PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_PREFIX + "<n>" + PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_DELAY_SUFFIX , description =
             "Attempt delay for each attempt"),
-    @WritesAttribute(attribute = PutKinesis.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_PREFIX + "<n>" + PutKinesis.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_ERROR_MESSAGE_SUFFIX , description =
+    @WritesAttribute(attribute = PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_PREFIX + "<n>" + PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_ERROR_MESSAGE_SUFFIX , description =
             "Attempt error message for each attempt"),
-    @WritesAttribute(attribute = PutKinesis.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_PREFIX + "<n>" + PutKinesis.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_SUCCESSFUL_SUFFIX , description =
+    @WritesAttribute(attribute = PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_PREFIX + "<n>" + PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_SUCCESSFUL_SUFFIX , description =
             "Attempt successfulfor each attempt")
 })
-public class PutKinesis extends AbstractKinesisProducerProcessor {
+public class PutKinesisStream extends AbstractKinesisProducerProcessor {
 
     /**
      * Attributes written by the producer
@@ -158,35 +158,35 @@ public class PutKinesis extends AbstractKinesisProducerProcessor {
 
         KinesisProducerConfiguration config = new KinesisProducerConfiguration();
 
-        config.setRegion(context.getProperty(PutKinesis.REGION).getValue());
+        config.setRegion(context.getProperty(PutKinesisStream.REGION).getValue());
 
         final AWSCredentialsProviderService awsCredentialsProviderService =
-                context.getProperty(PutKinesis.AWS_CREDENTIALS_PROVIDER_SERVICE).asControllerService(AWSCredentialsProviderService.class);
+                context.getProperty(PutKinesisStream.AWS_CREDENTIALS_PROVIDER_SERVICE).asControllerService(AWSCredentialsProviderService.class);
 
         config.setCredentialsProvider(awsCredentialsProviderService.getCredentialsProvider());
 
-        config.setMaxConnections(context.getProperty(PutKinesis.KINESIS_PRODUCER_MAX_CONNECTIONS_TO_BACKEND).asInteger());
-        config.setMinConnections(context.getProperty(PutKinesis.KINESIS_PRODUCER_MIN_CONNECTIONS_TO_BACKEND).asInteger());
+        config.setMaxConnections(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_MAX_CONNECTIONS_TO_BACKEND).asInteger());
+        config.setMinConnections(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_MIN_CONNECTIONS_TO_BACKEND).asInteger());
 
-        config.setRequestTimeout(context.getProperty(PutKinesis.KINESIS_PRODUCER_REQUEST_TIMEOUT).asInteger());
-        config.setConnectTimeout(context.getProperty(PutKinesis.KINESIS_PRODUCER_TLS_CONNECT_TIMEOUT).asLong());
+        config.setRequestTimeout(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_REQUEST_TIMEOUT).asInteger());
+        config.setConnectTimeout(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_TLS_CONNECT_TIMEOUT).asLong());
 
-        config.setRecordMaxBufferedTime(context.getProperty(PutKinesis.KINESIS_PRODUCER_MAX_BUFFER_INTERVAL).asInteger());
-        config.setRateLimit(context.getProperty(PutKinesis.KINESIS_PRODUCER_MAX_PUT_RATE).asInteger());
+        config.setRecordMaxBufferedTime(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_MAX_BUFFER_INTERVAL).asInteger());
+        config.setRateLimit(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_MAX_PUT_RATE).asInteger());
 
-        config.setAggregationEnabled(context.getProperty(PutKinesis.KINESIS_PRODUCER_AGGREGATION_ENABLED).asBoolean());
-        config.setAggregationMaxCount(context.getProperty(PutKinesis.KINESIS_PRODUCER_AGGREGATION_MAX_COUNT).asLong());
-        config.setAggregationMaxSize(context.getProperty(PutKinesis.KINESIS_PRODUCER_AGGREGATION_MAX_SIZE).asInteger());
+        config.setAggregationEnabled(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_AGGREGATION_ENABLED).asBoolean());
+        config.setAggregationMaxCount(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_AGGREGATION_MAX_COUNT).asLong());
+        config.setAggregationMaxSize(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_AGGREGATION_MAX_SIZE).asInteger());
 
-        config.setCollectionMaxCount(context.getProperty(PutKinesis.KINESIS_PRODUCER_COLLECTION_MAX_COUNT).asInteger());
-        config.setCollectionMaxSize(context.getProperty(PutKinesis.KINESIS_PRODUCER_COLLECTION_MAX_SIZE).asInteger());
+        config.setCollectionMaxCount(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_COLLECTION_MAX_COUNT).asInteger());
+        config.setCollectionMaxSize(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_COLLECTION_MAX_SIZE).asInteger());
 
-        config.setFailIfThrottled(context.getProperty(PutKinesis.KINESIS_PRODUCER_FAIL_IF_THROTTLED).asBoolean());
+        config.setFailIfThrottled(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_FAIL_IF_THROTTLED).asBoolean());
 
         config.setMetricsCredentialsProvider(awsCredentialsProviderService.getCredentialsProvider());
-        config.setMetricsNamespace(context.getProperty(PutKinesis.KINESIS_PRODUCER_METRICS_NAMESPACE).getValue());
-        config.setMetricsGranularity(context.getProperty(PutKinesis.KINESIS_PRODUCER_METRICS_GRANULARITY).getValue());
-        config.setMetricsLevel(context.getProperty(PutKinesis.KINESIS_PRODUCER_METRICS_LEVEL).getValue());
+        config.setMetricsNamespace(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_METRICS_NAMESPACE).getValue());
+        config.setMetricsGranularity(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_METRICS_GRANULARITY).getValue());
+        config.setMetricsLevel(context.getProperty(PutKinesisStream.KINESIS_PRODUCER_METRICS_LEVEL).getValue());
 
         producer = makeProducer(config);
 
@@ -218,7 +218,7 @@ public class PutKinesis extends AbstractKinesisProducerProcessor {
                 final ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 session.exportTo(flowFiles.get(i), baos);
 
-                String partitionKey = context.getProperty(PutKinesis.KINESIS_PARTITION_KEY)
+                String partitionKey = context.getProperty(PutKinesisStream.KINESIS_PARTITION_KEY)
                     .evaluateAttributeExpressions(flowFiles.get(i)).getValue();
                 if ( StringUtils.isBlank(partitionKey) ) {
                     partitionKey = Integer.toString(randomGenerator.nextInt());
@@ -243,7 +243,7 @@ public class PutKinesis extends AbstractKinesisProducerProcessor {
                         UserRecordFailedException urfe = (UserRecordFailedException) cause;
                         userRecordResult = urfe.getResult();
                     } else {
-                        session.transfer(flowFile, PutKinesis.REL_FAILURE);
+                        session.transfer(flowFile, PutKinesisStream.REL_FAILURE);
                         getLogger().error("Failed to publish to kinesis {} record {}", new Object[]{stream, flowFile});
                         continue;
                     }
@@ -259,7 +259,7 @@ public class PutKinesis extends AbstractKinesisProducerProcessor {
             }
 
             if ( failedFlowFiles.size() > 0 ) {
-                session.transfer(failedFlowFiles, PutKinesis.REL_FAILURE);
+                session.transfer(failedFlowFiles, PutKinesisStream.REL_FAILURE);
                 getLogger().error("Failed to publish to kinesis {} records {}", new Object[]{stream, failedFlowFiles});
             }
 

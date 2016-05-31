@@ -66,14 +66,14 @@ import com.amazonaws.services.kinesis.model.Record;
         + "Also usage of AWS Cloud Watch and DynamoDB may incur additional costs."
 )
 @WritesAttributes({
-    @WritesAttribute(attribute = GetKinesis.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP, description = "Approximate arrival time of the record"),
-    @WritesAttribute(attribute = GetKinesis.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY, description = "Partition key of the record"),
-    @WritesAttribute(attribute = GetKinesis.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER, description = "Sequence number of the record"),
-    @WritesAttribute(attribute = GetKinesis.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND, description = "Consumer lag for processing records"),
-    @WritesAttribute(attribute = GetKinesis.KINESIS_CONSUMER_RECORD_START_TIMESTAMP, description = "Timestamp when the particular batch of records was processed "),
-    @WritesAttribute(attribute = GetKinesis.KINESIS_CONSUMER_RECORD_NUBMER, description = "Record number of the record processed in that batch")
+    @WritesAttribute(attribute = GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP, description = "Approximate arrival time of the record"),
+    @WritesAttribute(attribute = GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY, description = "Partition key of the record"),
+    @WritesAttribute(attribute = GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER, description = "Sequence number of the record"),
+    @WritesAttribute(attribute = GetKinesisStream.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND, description = "Consumer lag for processing records"),
+    @WritesAttribute(attribute = GetKinesisStream.KINESIS_CONSUMER_RECORD_START_TIMESTAMP, description = "Timestamp when the particular batch of records was processed "),
+    @WritesAttribute(attribute = GetKinesisStream.KINESIS_CONSUMER_RECORD_NUBMER, description = "Record number of the record processed in that batch")
 })
-public class GetKinesis extends AbstractKinesisConsumerProcessor implements RecordsHandler {
+public class GetKinesisStream extends AbstractKinesisConsumerProcessor implements RecordsHandler {
 
     /**
      * Attributes written by processor
@@ -112,17 +112,17 @@ public class GetKinesis extends AbstractKinesisConsumerProcessor implements Reco
 
         final AWSCredentialsProviderService awsCredentialsProviderService = getAWSCredentialsProviderService(context);
 
-        streamName = context.getProperty(GetKinesis.KINESIS_STREAM_NAME).getValue();
+        streamName = context.getProperty(GetKinesisStream.KINESIS_STREAM_NAME).getValue();
         KinesisClientLibConfiguration config;
 
         try {
             config = new KinesisClientLibConfiguration(
-                context.getProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME).getValue(),
-                context.getProperty(GetKinesis.KINESIS_STREAM_NAME).getValue(),
+                context.getProperty(GetKinesisStream.KINESIS_CONSUMER_APPLICATION_NAME).getValue(),
+                context.getProperty(GetKinesisStream.KINESIS_STREAM_NAME).getValue(),
                     awsCredentialsProviderService.getCredentialsProvider(),
-                context.getProperty(GetKinesis.KINESIS_CONSUMER_WORKER_ID_PREFIX).getValue()+ ":"
+                context.getProperty(GetKinesisStream.KINESIS_CONSUMER_WORKER_ID_PREFIX).getValue()+ ":"
                     + InetAddress.getLocalHost().getCanonicalHostName() + ":" + UUID.randomUUID().toString())
-                    .withRegionName(context.getProperty(GetKinesis.REGION).getValue())
+                    .withRegionName(context.getProperty(GetKinesisStream.REGION).getValue())
                     .withInitialPositionInStream(
                          InitialPositionInStream.valueOf(
                              context.getProperty(KINESIS_CONSUMER_INITIAL_POSITION_IN_STREAM).getValue()))
@@ -139,7 +139,7 @@ public class GetKinesis extends AbstractKinesisConsumerProcessor implements Reco
                     .withMetricsMaxQueueSize(context.getProperty(KINESIS_CONSUMER_DEFAULT_METRICS_MAX_QUEUE_SIZE).asInteger())
                     .withMetricsLevel(context.getProperty(KINESIS_CONSUMER_DEFAULT_METRICS_LEVEL).getValue());
 
-            batchSize = context.getProperty(GetKinesis.BATCH_SIZE).asInteger();
+            batchSize = context.getProperty(GetKinesisStream.BATCH_SIZE).asInteger();
             config.withMaxRecords(batchSize);
 
             KinesisRecordProcessorFactory kinesisRecordProcessorFactory = new KinesisRecordProcessorFactory(this);
@@ -159,7 +159,7 @@ public class GetKinesis extends AbstractKinesisConsumerProcessor implements Reco
      */
     protected AWSCredentialsProviderService getAWSCredentialsProviderService(final ProcessContext context) {
         return context
-                .getProperty(GetKinesis.AWS_CREDENTIALS_PROVIDER_SERVICE)
+                .getProperty(GetKinesisStream.AWS_CREDENTIALS_PROVIDER_SERVICE)
                 .asControllerService(AWSCredentialsProviderService.class);
     }
 

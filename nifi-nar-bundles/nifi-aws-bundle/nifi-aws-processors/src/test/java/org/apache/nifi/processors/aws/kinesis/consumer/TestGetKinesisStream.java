@@ -66,7 +66,7 @@ import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
 import com.amazonaws.services.kinesis.model.Record;
 
 @SuppressWarnings("unchecked")
-public class TestGetKinesis {
+public class TestGetKinesisStream {
 
     protected ProcessSession mockProcessSession;
     protected ProcessContext mockProcessContext;
@@ -82,7 +82,7 @@ public class TestGetKinesis {
     protected AWSCredentialsProviderControllerService mockAWSCredentialsProviderControllerService;
     protected PropertyValue mockPropertyValue;
 
-    protected GetKinesis getKinesis;
+    protected GetKinesisStream getKinesis;
     private TestRunner runner;
     protected Worker mockWorker;
     private ShutdownInput mockShutdownInput;
@@ -90,7 +90,7 @@ public class TestGetKinesis {
 
     @Before
     public void setUp() throws Exception {
-        getKinesis = new GetKinesis() {
+        getKinesis = new GetKinesisStream() {
             @Override
             protected ProcessSessionFactory getSessionFactory() {
                 return mockProcessSessionFactory;
@@ -119,25 +119,25 @@ public class TestGetKinesis {
                 KinesisHelper.CREDENTIALS_FILE);
         runner.enableControllerService(serviceImpl);
 
-        runner.setProperty(GetKinesis.REGION, "us-west-2");
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, "streamname");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "AppName");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_WORKER_ID_PREFIX, "WorkerPrefix1");
-        runner.setProperty(GetKinesis.BATCH_SIZE, "5");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_INITIAL_POSITION_IN_STREAM,
+        runner.setProperty(GetKinesisStream.REGION, "us-west-2");
+        runner.setProperty(GetKinesisStream.KINESIS_STREAM_NAME, "streamname");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_APPLICATION_NAME, "AppName");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_WORKER_ID_PREFIX, "WorkerPrefix1");
+        runner.setProperty(GetKinesisStream.BATCH_SIZE, "5");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_INITIAL_POSITION_IN_STREAM,
                 InitialPositionInStream.LATEST.toString());
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_DEFAULT_FAILOVER_TIME_MILLIS, "2000");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_DEFAULT_MAX_RECORDS, "25");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_DEFAULT_IDLETIME_BETWEEN_READS_MILLIS, "200");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_DEFAULT_DONT_CALL_PROCESS_RECORDS_FOR_EMPTY_RECORD_LIST,
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_FAILOVER_TIME_MILLIS, "2000");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_MAX_RECORDS, "25");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_IDLETIME_BETWEEN_READS_MILLIS, "200");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_DONT_CALL_PROCESS_RECORDS_FOR_EMPTY_RECORD_LIST,
                 "true");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_DEFAULT_PARENT_SHARD_POLL_INTERVAL_MILLIS, "100");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_DEFAULT_SHARD_SYNC_INTERVAL_MILLIS, "200");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_DEFAULT_CLEANUP_LEASES_UPON_SHARDS_COMPLETION, "true");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_DEFAULT_TASK_BACKOFF_TIME_MILLIS, "200");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_DEFAULT_METRICS_BUFFER_TIME_MILLIS, "200");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_DEFAULT_METRICS_MAX_QUEUE_SIZE, "20");
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_DEFAULT_METRICS_LEVEL, MetricsLevel.DETAILED.name() );
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_PARENT_SHARD_POLL_INTERVAL_MILLIS, "100");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_SHARD_SYNC_INTERVAL_MILLIS, "200");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_CLEANUP_LEASES_UPON_SHARDS_COMPLETION, "true");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_TASK_BACKOFF_TIME_MILLIS, "200");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_METRICS_BUFFER_TIME_MILLIS, "200");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_METRICS_MAX_QUEUE_SIZE, "20");
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_METRICS_LEVEL, MetricsLevel.DETAILED.name() );
         runner.assertValid();
 
         mockProcessSession = mock(ProcessSession.class);
@@ -165,32 +165,32 @@ public class TestGetKinesis {
     public void testPropertyDescriptors() {
         List<PropertyDescriptor> descriptors = getKinesis.getPropertyDescriptors();
         assertEquals("size should be same",18, descriptors.size());
-        assertTrue(descriptors.contains(GetKinesis.REGION));
-        assertTrue(descriptors.contains(GetKinesis.AWS_CREDENTIALS_PROVIDER_SERVICE));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_STREAM_NAME));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_WORKER_ID_PREFIX));
-        assertTrue(descriptors.contains(GetKinesis.BATCH_SIZE));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_INITIAL_POSITION_IN_STREAM));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_DEFAULT_FAILOVER_TIME_MILLIS));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_DEFAULT_MAX_RECORDS));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_DEFAULT_IDLETIME_BETWEEN_READS_MILLIS));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_DEFAULT_DONT_CALL_PROCESS_RECORDS_FOR_EMPTY_RECORD_LIST));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_DEFAULT_PARENT_SHARD_POLL_INTERVAL_MILLIS));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_DEFAULT_SHARD_SYNC_INTERVAL_MILLIS));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_DEFAULT_CLEANUP_LEASES_UPON_SHARDS_COMPLETION));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_DEFAULT_TASK_BACKOFF_TIME_MILLIS));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_DEFAULT_METRICS_BUFFER_TIME_MILLIS));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_DEFAULT_METRICS_MAX_QUEUE_SIZE));
-        assertTrue(descriptors.contains(GetKinesis.KINESIS_CONSUMER_DEFAULT_METRICS_LEVEL));
+        assertTrue(descriptors.contains(GetKinesisStream.REGION));
+        assertTrue(descriptors.contains(GetKinesisStream.AWS_CREDENTIALS_PROVIDER_SERVICE));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_STREAM_NAME));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_APPLICATION_NAME));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_WORKER_ID_PREFIX));
+        assertTrue(descriptors.contains(GetKinesisStream.BATCH_SIZE));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_INITIAL_POSITION_IN_STREAM));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_FAILOVER_TIME_MILLIS));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_MAX_RECORDS));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_IDLETIME_BETWEEN_READS_MILLIS));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_DONT_CALL_PROCESS_RECORDS_FOR_EMPTY_RECORD_LIST));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_PARENT_SHARD_POLL_INTERVAL_MILLIS));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_SHARD_SYNC_INTERVAL_MILLIS));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_CLEANUP_LEASES_UPON_SHARDS_COMPLETION));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_TASK_BACKOFF_TIME_MILLIS));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_METRICS_BUFFER_TIME_MILLIS));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_METRICS_MAX_QUEUE_SIZE));
+        assertTrue(descriptors.contains(GetKinesisStream.KINESIS_CONSUMER_DEFAULT_METRICS_LEVEL));
     }
 
     @Test
     public void testRelationships() {
         Set<Relationship> rels = getKinesis.getRelationships();
         assertEquals("size should be same",2, rels.size());
-        assertTrue(rels.contains(GetKinesis.REL_FAILURE));
-        assertTrue(rels.contains(GetKinesis.REL_SUCCESS));
+        assertTrue(rels.contains(GetKinesisStream.REL_FAILURE));
+        assertTrue(rels.contains(GetKinesisStream.REL_SUCCESS));
     }
 
     @Test
@@ -219,7 +219,7 @@ public class TestGetKinesis {
 
         verify(mockProcessSessionFactory).createSession();
         verify(mockProcessSession).importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile1));
-        verify(mockProcessSession).transfer(mockFlowFile1,GetKinesis.REL_SUCCESS);
+        verify(mockProcessSession).transfer(mockFlowFile1,GetKinesisStream.REL_SUCCESS);
         verify(mockProvenanceReporter).receive(eq(mockFlowFile1),anyString(),isA(Long.class));
         verify(mockRecordProcessorCheckpointer).checkpoint(record);
         verify(mockProcessSession).commit();
@@ -267,7 +267,7 @@ public class TestGetKinesis {
 
         verify(mockProcessSessionFactory).createSession();
         verify(mockProcessSession).importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile1));
-        verify(mockProcessSession).transfer(mockFlowFile1,GetKinesis.REL_SUCCESS);
+        verify(mockProcessSession).transfer(mockFlowFile1,GetKinesisStream.REL_SUCCESS);
         verify(mockProvenanceReporter).receive(eq(mockFlowFile1),anyString(),isA(Long.class));
         verify(mockRecordProcessorCheckpointer).checkpoint(record);
         verify(mockProcessSession).commit();
@@ -305,11 +305,11 @@ public class TestGetKinesis {
 
         verify(mockProcessSessionFactory).createSession();
         verify(mockProcessSession).importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile1));
-        verify(mockProcessSession).transfer(mockFlowFile1,GetKinesis.REL_SUCCESS);
+        verify(mockProcessSession).transfer(mockFlowFile1,GetKinesisStream.REL_SUCCESS);
         verify(mockProcessSession).putAllAttributes(eq(mockFlowFile1),(Map<String, String>) isA(Map.class));
 
         verify(mockProcessSession).importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile2));
-        verify(mockProcessSession).transfer(mockFlowFile2,GetKinesis.REL_SUCCESS);
+        verify(mockProcessSession).transfer(mockFlowFile2,GetKinesisStream.REL_SUCCESS);
         verify(mockProcessSession).putAllAttributes(eq(mockFlowFile2),(Map<String, String>) isA(Map.class));
 
         verify(mockProvenanceReporter,times(1)).receive(eq(mockFlowFile1),anyString(),isA(Long.class));
@@ -371,7 +371,7 @@ public class TestGetKinesis {
             .thenReturn(mockFlowFile1);
 
         doThrow(new RuntimeException("testException")).when(mockProcessSession)
-            .transfer(mockFlowFile1,GetKinesis.REL_SUCCESS);
+            .transfer(mockFlowFile1,GetKinesisStream.REL_SUCCESS);
 
         getKinesis.processRecords(processRecordsInput, mockInitializationInput);
 
@@ -416,7 +416,7 @@ public class TestGetKinesis {
 
         verify(mockProcessSessionFactory).createSession();
         verify(mockProcessSession).importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile1));
-        verify(mockProcessSession).transfer(mockFlowFile1,GetKinesis.REL_SUCCESS);
+        verify(mockProcessSession).transfer(mockFlowFile1,GetKinesisStream.REL_SUCCESS);
         verify(mockProcessSession).putAllAttributes(eq(mockFlowFile1),(Map<String, String>) isA(Map.class));
 
         verify(mockProcessSession).importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile2));
@@ -455,17 +455,17 @@ public class TestGetKinesis {
             .thenReturn(mockFlowFile2);
 
         doThrow(new RuntimeException("RuntimeExceptionTransfer")).when(mockProcessSession)
-            .transfer(mockFlowFile2,GetKinesis.REL_SUCCESS);
+            .transfer(mockFlowFile2,GetKinesisStream.REL_SUCCESS);
 
         getKinesis.processRecords(processRecordsInput, mockInitializationInput);
 
         verify(mockProcessSessionFactory).createSession();
         verify(mockProcessSession).importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile1));
-        verify(mockProcessSession).transfer(mockFlowFile1,GetKinesis.REL_SUCCESS);
+        verify(mockProcessSession).transfer(mockFlowFile1,GetKinesisStream.REL_SUCCESS);
         verify(mockProcessSession).putAllAttributes(eq(mockFlowFile1),(Map<String, String>) isA(Map.class));
 
         verify(mockProcessSession).importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile2));
-        verify(mockProcessSession).transfer(mockFlowFile2,GetKinesis.REL_SUCCESS);
+        verify(mockProcessSession).transfer(mockFlowFile2,GetKinesisStream.REL_SUCCESS);
 
         verify(mockProvenanceReporter,times(1)).receive(eq(mockFlowFile1),anyString(),isA(Long.class));
         verify(mockProcessSession).remove(mockFlowFile2);

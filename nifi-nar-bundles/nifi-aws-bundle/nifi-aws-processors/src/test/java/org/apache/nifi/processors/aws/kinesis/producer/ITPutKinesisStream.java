@@ -34,16 +34,16 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 //Uncomment ignore and make sure that the kinesis stream exists before running the test
-@Ignore
-public class ITPutKinesis {
+//@Ignore
+public class ITPutKinesisStream {
 
     private TestRunner runner;
 
-    private static final String kinesisStream = "k-stream";
+    private static final String kinesisStream = "ntestkinesis";
 
     @Before
     public void setUp() throws Exception {
-        runner = TestRunners.newTestRunner(PutKinesis.class);
+        runner = TestRunners.newTestRunner(PutKinesisStream.class);
         final AWSCredentialsProviderControllerService serviceImpl = new AWSCredentialsProviderControllerService();
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
         runner.setProperty(serviceImpl, AbstractBaseAWSProcessor.CREDENTIALS_FILE,
@@ -51,7 +51,7 @@ public class ITPutKinesis {
         runner.enableControllerService(serviceImpl);
 
         runner.assertValid(serviceImpl);
-        runner.setProperty(PutKinesis.AWS_CREDENTIALS_PROVIDER_SERVICE, "awsCredentialsProvider");
+        runner.setProperty(PutKinesisStream.AWS_CREDENTIALS_PROVIDER_SERVICE, "awsCredentialsProvider");
     }
 
     @After
@@ -61,31 +61,31 @@ public class ITPutKinesis {
 
     @Test
     public void testIntegrationSuccessWithPartitionKey() throws Exception {
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(PutKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
         runner.assertValid();
-        runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
+        runner.setProperty(PutKinesisStream.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
         attrib.put("kinesis.partition.key", "p1");
         runner.enqueue("test".getBytes(),attrib);
         runner.run(1);
 
-        runner.assertAllFlowFilesTransferred(PutKinesis.REL_SUCCESS, 1);
+        runner.assertAllFlowFilesTransferred(PutKinesisStream.REL_SUCCESS, 1);
 
-        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesis.REL_SUCCESS);
+        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesisStream.REL_SUCCESS);
         final MockFlowFile out = ffs.iterator().next();
 
         Map<String, String> attributes = out.getAttributes();
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
         out.assertContentEquals("test".getBytes());
     }
 
     @Test
     public void testIntegrationSuccessWithPartitionKeyDefaultSetting() throws Exception {
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(PutKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
         runner.assertValid();
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
@@ -93,51 +93,51 @@ public class ITPutKinesis {
         runner.enqueue("test".getBytes(),attrib);
         runner.run(1);
 
-        runner.assertAllFlowFilesTransferred(PutKinesis.REL_SUCCESS, 1);
+        runner.assertAllFlowFilesTransferred(PutKinesisStream.REL_SUCCESS, 1);
 
-        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesis.REL_SUCCESS);
+        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesisStream.REL_SUCCESS);
         final MockFlowFile out = ffs.iterator().next();
 
         Map<String, String> attributes = out.getAttributes();
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
         out.assertContentEquals("test".getBytes());
     }
 
     @Test
     public void testIntegrationSuccessWithOutPartitionKey() throws Exception {
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(PutKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
         runner.assertValid();
-        runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
+        runner.setProperty(PutKinesisStream.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
         runner.enqueue("test".getBytes(),attrib);
         runner.run(1);
 
-        runner.assertAllFlowFilesTransferred(PutKinesis.REL_SUCCESS, 1);
+        runner.assertAllFlowFilesTransferred(PutKinesisStream.REL_SUCCESS, 1);
 
-        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesis.REL_SUCCESS);
+        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesisStream.REL_SUCCESS);
         final MockFlowFile out = ffs.iterator().next();
 
         Map<String, String> attributes = out.getAttributes();
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
         out.assertContentEquals("test".getBytes());
     }
 
     @Test
     public void testIntegrationFailedBadStreamName() throws Exception {
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, "bad-stream");
+        runner.setProperty(PutKinesisStream.KINESIS_STREAM_NAME, "bad-stream");
         runner.assertValid();
 
         runner.enqueue("test".getBytes());
         runner.run(1);
 
-        runner.assertAllFlowFilesTransferred(PutKinesis.REL_FAILURE, 1);
+        runner.assertAllFlowFilesTransferred(PutKinesisStream.REL_FAILURE, 1);
 
     }
 }

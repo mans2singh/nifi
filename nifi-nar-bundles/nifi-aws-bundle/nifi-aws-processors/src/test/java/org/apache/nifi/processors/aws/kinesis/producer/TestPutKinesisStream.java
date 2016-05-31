@@ -50,7 +50,7 @@ import com.amazonaws.services.kinesis.producer.UserRecordResult;
 import com.google.common.util.concurrent.ListenableFuture;
 
 @SuppressWarnings("unchecked")
-public class TestPutKinesis {
+public class TestPutKinesisStream {
 
     protected ProcessSession mockProcessSession;
     protected ProcessContext mockProcessContext;
@@ -61,7 +61,7 @@ public class TestPutKinesis {
 
     protected KinesisProducer mockProducer;
 
-    protected PutKinesis putKinesis;
+    protected PutKinesisStream putKinesis;
     private ListenableFuture<UserRecordResult> mockFuture1;
     private UserRecordResult mockUserRecordResult1;
     private Attempt mockAttempt1;
@@ -75,7 +75,7 @@ public class TestPutKinesis {
 
     @Before
     public void setUp() throws Exception {
-        putKinesis = new PutKinesis() {
+        putKinesis = new PutKinesisStream() {
 
             @Override
             protected KinesisProducer makeProducer(KinesisProducerConfiguration config) {
@@ -91,7 +91,7 @@ public class TestPutKinesis {
         runner.enableControllerService(serviceImpl);
 
         runner.assertValid(serviceImpl);
-        runner.setProperty(PutKinesis.AWS_CREDENTIALS_PROVIDER_SERVICE, "awsCredentialsProvider");
+        runner.setProperty(PutKinesisStream.AWS_CREDENTIALS_PROVIDER_SERVICE, "awsCredentialsProvider");
         mockProcessSession = mock(ProcessSession.class);
         mockProcessContext = mock(ProcessContext.class);
         mockProducer = mock(KinesisProducer.class);
@@ -113,37 +113,37 @@ public class TestPutKinesis {
 
     @Test
     public void testPropertyDescriptors() {
-        PutKinesis putKinesis = new PutKinesis();
+        PutKinesisStream putKinesis = new PutKinesisStream();
         List<PropertyDescriptor> descriptors = putKinesis.getPropertyDescriptors();
         assertEquals("size should be same",20, descriptors.size());
-        assertTrue(descriptors.contains(PutKinesis.REGION));
-        assertTrue(descriptors.contains(PutKinesis.AWS_CREDENTIALS_PROVIDER_SERVICE));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_STREAM_NAME));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PARTITION_KEY));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_MAX_BUFFER_INTERVAL));
-        assertTrue(descriptors.contains(PutKinesis.BATCH_SIZE));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_AGGREGATION_ENABLED));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_AGGREGATION_MAX_COUNT));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_AGGREGATION_MAX_SIZE));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_COLLECTION_MAX_COUNT));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_COLLECTION_MAX_SIZE));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_FAIL_IF_THROTTLED));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_MAX_CONNECTIONS_TO_BACKEND));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_MIN_CONNECTIONS_TO_BACKEND));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_METRICS_NAMESPACE));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_METRICS_GRANULARITY));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_METRICS_LEVEL));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_MAX_PUT_RATE));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_REQUEST_TIMEOUT));
-        assertTrue(descriptors.contains(PutKinesis.KINESIS_PRODUCER_TLS_CONNECT_TIMEOUT));
+        assertTrue(descriptors.contains(PutKinesisStream.REGION));
+        assertTrue(descriptors.contains(PutKinesisStream.AWS_CREDENTIALS_PROVIDER_SERVICE));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_STREAM_NAME));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PARTITION_KEY));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_MAX_BUFFER_INTERVAL));
+        assertTrue(descriptors.contains(PutKinesisStream.BATCH_SIZE));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_AGGREGATION_ENABLED));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_AGGREGATION_MAX_COUNT));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_AGGREGATION_MAX_SIZE));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_COLLECTION_MAX_COUNT));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_COLLECTION_MAX_SIZE));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_FAIL_IF_THROTTLED));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_MAX_CONNECTIONS_TO_BACKEND));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_MIN_CONNECTIONS_TO_BACKEND));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_METRICS_NAMESPACE));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_METRICS_GRANULARITY));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_METRICS_LEVEL));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_MAX_PUT_RATE));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_REQUEST_TIMEOUT));
+        assertTrue(descriptors.contains(PutKinesisStream.KINESIS_PRODUCER_TLS_CONNECT_TIMEOUT));
     }
 
     @Test
     public void testRelationships() {
         Set<Relationship> rels = putKinesis.getRelationships();
         assertEquals("size should be same",2, rels.size());
-        assertTrue(rels.contains(PutKinesis.REL_FAILURE));
-        assertTrue(rels.contains(PutKinesis.REL_SUCCESS));
+        assertTrue(rels.contains(PutKinesisStream.REL_FAILURE));
+        assertTrue(rels.contains(PutKinesisStream.REL_SUCCESS));
     }
 
     @Test
@@ -158,23 +158,23 @@ public class TestPutKinesis {
         when(mockUserRecordResult1.getShardId()).thenReturn("shard1");
         when(mockUserRecordResult1.isSuccessful()).thenReturn(true);
         listAttempts.add(mockAttempt1);
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
+        runner.setProperty(PutKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(PutKinesisStream.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
         attrib.put("kinesis.partition.key", "p1");
         runner.enqueue("test".getBytes(),attrib);
         runner.run(1);
 
-        runner.assertAllFlowFilesTransferred(PutKinesis.REL_SUCCESS, 1);
+        runner.assertAllFlowFilesTransferred(PutKinesisStream.REL_SUCCESS, 1);
 
-        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesis.REL_SUCCESS);
+        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesisStream.REL_SUCCESS);
         final MockFlowFile out = ffs.iterator().next();
 
         Map<String, String> attributes = out.getAttributes();
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
         out.assertContentEquals("test".getBytes());
     }
@@ -191,24 +191,24 @@ public class TestPutKinesis {
         when(mockUserRecordResult1.getShardId()).thenReturn("shard1");
         when(mockUserRecordResult1.isSuccessful()).thenReturn(false);
         listAttempts.add(mockAttempt1);
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
+        runner.setProperty(PutKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(PutKinesisStream.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
         attrib.put("kinesis.partition.key", "p1");
         runner.enqueue("test".getBytes(),attrib);
         runner.run(1);
 
-        runner.assertAllFlowFilesTransferred(PutKinesis.REL_FAILURE, 1);
+        runner.assertAllFlowFilesTransferred(PutKinesisStream.REL_FAILURE, 1);
 
         final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(
-                PutKinesis.REL_FAILURE);
+                PutKinesisStream.REL_FAILURE);
         final MockFlowFile out = ffs.iterator().next();
 
         Map<String, String> attributes = out.getAttributes();
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-        assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+        assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
         out.assertContentEquals("test".getBytes());
     }
@@ -232,8 +232,8 @@ public class TestPutKinesis {
         when(mockUserRecordResult2.getShardId()).thenReturn("shard1");
         when(mockUserRecordResult2.isSuccessful()).thenReturn(true);
 
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
+        runner.setProperty(PutKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(PutKinesisStream.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
         attrib.put("kinesis.partition.key", "p1");
@@ -243,16 +243,16 @@ public class TestPutKinesis {
         listAttempts.add(mockAttempt1);
         listAttempts.add(mockAttempt2);
 
-        runner.assertAllFlowFilesTransferred(PutKinesis.REL_SUCCESS, 2);
+        runner.assertAllFlowFilesTransferred(PutKinesisStream.REL_SUCCESS, 2);
 
-        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesis.REL_SUCCESS);
+        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesisStream.REL_SUCCESS);
         int count = 1;
         for (MockFlowFile flowFile : ffs) {
 
             Map<String, String> attributes = flowFile.getAttributes();
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
             if ( count == 1 ) {
                 flowFile.assertContentEquals("success1".getBytes());
@@ -283,8 +283,8 @@ public class TestPutKinesis {
         when(mockUserRecordResult2.getShardId()).thenReturn("shard1");
         when(mockUserRecordResult2.isSuccessful()).thenReturn(false);
 
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
+        runner.setProperty(PutKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(PutKinesisStream.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
         attrib.put("kinesis.partition.key", "p1");
@@ -294,16 +294,16 @@ public class TestPutKinesis {
         listAttempts.add(mockAttempt1);
         listAttempts.add(mockAttempt2);
 
-        runner.assertAllFlowFilesTransferred(PutKinesis.REL_FAILURE, 2);
+        runner.assertAllFlowFilesTransferred(PutKinesisStream.REL_FAILURE, 2);
 
-        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesis.REL_FAILURE);
+        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesisStream.REL_FAILURE);
         int count = 1;
         for (MockFlowFile flowFile : ffs) {
 
             Map<String, String> attributes = flowFile.getAttributes();
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
             if ( count == 1 ) {
                 flowFile.assertContentEquals("failure1".getBytes());
@@ -334,8 +334,8 @@ public class TestPutKinesis {
         when(mockUserRecordResult2.getShardId()).thenReturn("shard1");
         when(mockUserRecordResult2.isSuccessful()).thenReturn(true);
 
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
+        runner.setProperty(PutKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(PutKinesisStream.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
         attrib.put("kinesis.partition.key", "p1");
@@ -345,28 +345,28 @@ public class TestPutKinesis {
         listAttempts.add(mockAttempt1);
         listAttempts.add(mockAttempt2);
 
-        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesis.REL_FAILURE);
+        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesisStream.REL_FAILURE);
         int count = 1;
         for (MockFlowFile flowFile : ffs) {
 
             Map<String, String> attributes = flowFile.getAttributes();
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
             if ( count == 1 ) {
                 flowFile.assertContentEquals("failure1".getBytes());
             }
         }
 
-        final List<MockFlowFile> ffs2 = runner.getFlowFilesForRelationship(PutKinesis.REL_SUCCESS);
+        final List<MockFlowFile> ffs2 = runner.getFlowFilesForRelationship(PutKinesisStream.REL_SUCCESS);
         int count2 = 1;
         for (MockFlowFile flowFile : ffs2) {
 
             Map<String, String> attributes = flowFile.getAttributes();
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
             if ( count2 == 1 ) {
                 flowFile.assertContentEquals("success2".getBytes());
@@ -393,8 +393,8 @@ public class TestPutKinesis {
         when(mockUserRecordResult2.getShardId()).thenReturn("shard1");
         when(mockUserRecordResult2.isSuccessful()).thenReturn(false);
 
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
+        runner.setProperty(PutKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(PutKinesisStream.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
         attrib.put("kinesis.partition.key", "p1");
@@ -404,28 +404,28 @@ public class TestPutKinesis {
         listAttempts.add(mockAttempt1);
         listAttempts.add(mockAttempt2);
 
-        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesis.REL_FAILURE);
+        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesisStream.REL_FAILURE);
         int count = 1;
         for (MockFlowFile flowFile : ffs) {
 
             Map<String, String> attributes = flowFile.getAttributes();
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
             if ( count == 1 ) {
                 flowFile.assertContentEquals("failure2".getBytes());
             }
         }
 
-        final List<MockFlowFile> ffs2 = runner.getFlowFilesForRelationship(PutKinesis.REL_SUCCESS);
+        final List<MockFlowFile> ffs2 = runner.getFlowFilesForRelationship(PutKinesisStream.REL_SUCCESS);
         int count2 = 1;
         for (MockFlowFile flowFile : ffs2) {
 
             Map<String, String> attributes = flowFile.getAttributes();
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
             if ( count2 == 1 ) {
                 flowFile.assertContentEquals("success1".getBytes());
@@ -458,8 +458,8 @@ public class TestPutKinesis {
         when(mockUserRecordResult3.getShardId()).thenReturn("shard1");
         when(mockUserRecordResult3.isSuccessful()).thenReturn(true);
 
-        runner.setProperty(PutKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(PutKinesis.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
+        runner.setProperty(PutKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(PutKinesisStream.KINESIS_PARTITION_KEY, "${kinesis.partition.key}");
         runner.setValidateExpressionUsage(true);
         Map<String,String> attrib = new HashMap<>();
         attrib.put("kinesis.partition.key", "p1");
@@ -470,14 +470,14 @@ public class TestPutKinesis {
         listAttempts.add(mockAttempt1);
         listAttempts.add(mockAttempt2);
 
-        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesis.REL_FAILURE);
+        final List<MockFlowFile> ffs = runner.getFlowFilesForRelationship(PutKinesisStream.REL_FAILURE);
         int count = 1;
         for (MockFlowFile flowFile : ffs) {
 
             Map<String, String> attributes = flowFile.getAttributes();
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
             if ( count == 1 ) {
                 flowFile.assertContentEquals("failure2".getBytes());
@@ -485,14 +485,14 @@ public class TestPutKinesis {
             count++;
         }
 
-        final List<MockFlowFile> ffs2 = runner.getFlowFilesForRelationship(PutKinesis.REL_SUCCESS);
+        final List<MockFlowFile> ffs2 = runner.getFlowFilesForRelationship(PutKinesisStream.REL_SUCCESS);
         int count2 = 1;
         for (MockFlowFile flowFile : ffs2) {
 
             Map<String, String> attributes = flowFile.getAttributes();
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
-            assertTrue(attributes.containsKey(PutKinesis.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SUCCESSFUL));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SHARD_ID));
+            assertTrue(attributes.containsKey(PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_SEQUENCENUMBER));
 
             if ( count2 == 1 ) {
                 flowFile.assertContentEquals("success1".getBytes());

@@ -50,17 +50,17 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 
 // Uncomment ignore and make sure that the kinesis stream exists before running the test
 @Ignore
-public class ITGetKinesis  {
+public class ITGetKinesisStream  {
 
     private TestRunner runner;
-    private GetKinesis getKinesis;
+    private GetKinesisStream getKinesis;
     private IRecordProcessorCheckpointer mockRecordProcessorCheckPointer;
     private static final String kinesisStream = "k-stream";
 
     @Before
     public void setUp() throws Exception {
         mockRecordProcessorCheckPointer = Mockito.mock(IRecordProcessorCheckpointer.class);
-        getKinesis = new GetKinesis();
+        getKinesis = new GetKinesisStream();
         runner = TestRunners.newTestRunner(getKinesis);
         final AWSCredentialsProviderControllerService serviceImpl = new AWSCredentialsProviderControllerService();
         runner.addControllerService("awsCredentialsProvider", serviceImpl);
@@ -69,7 +69,7 @@ public class ITGetKinesis  {
         runner.enableControllerService(serviceImpl);
 
         runner.assertValid(serviceImpl);
-        runner.setProperty(GetKinesis.AWS_CREDENTIALS_PROVIDER_SERVICE, "awsCredentialsProvider");
+        runner.setProperty(GetKinesisStream.AWS_CREDENTIALS_PROVIDER_SERVICE, "awsCredentialsProvider");
     }
 
     @After
@@ -84,15 +84,15 @@ public class ITGetKinesis  {
      */
     @Test
     public void testGetKinesisInvokeOnTriggerIgnored() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
+        runner.setProperty(GetKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
         runner.enqueue("test".getBytes());
         runner.run(1);
 
-        runner.assertAllFlowFilesTransferred(GetKinesis.REL_SUCCESS, 0);
-        runner.assertAllFlowFilesTransferred(GetKinesis.REL_FAILURE, 0);
+        runner.assertAllFlowFilesTransferred(GetKinesisStream.REL_SUCCESS, 0);
+        runner.assertAllFlowFilesTransferred(GetKinesisStream.REL_FAILURE, 0);
     }
 
     /**
@@ -100,8 +100,8 @@ public class ITGetKinesis  {
      */
     @Test
     public void testGetKinesisInvokeProcessRecordsWithOneRecord() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
+        runner.setProperty(GetKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
         runner.enqueue("hello".getBytes());
@@ -123,20 +123,20 @@ public class ITGetKinesis  {
 
         getKinesis.processRecords(input, initializationInput);
 
-        runner.assertAllFlowFilesTransferred(GetKinesis.REL_SUCCESS);
+        runner.assertAllFlowFilesTransferred(GetKinesisStream.REL_SUCCESS);
 
         Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint(userRecord);
 
-        final List<MockFlowFile> getFlowFiles = runner.getFlowFilesForRelationship(GetKinesis.REL_SUCCESS);
+        final List<MockFlowFile> getFlowFiles = runner.getFlowFilesForRelationship(GetKinesisStream.REL_SUCCESS);
         final MockFlowFile flowFile = getFlowFiles.iterator().next();
 
         Map<String, String> attributes = flowFile.getAttributes();
-        assertEquals("abcd",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY));
-        assertEquals("seq1",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER));
-        assertEquals("5",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
-        assertEquals("0",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
-        assertTrue(attributes.containsKey(GetKinesis.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
-        assertEquals("0",attributes.get(GetKinesis.KINESIS_CONSUMER_RECORD_NUBMER));
+        assertEquals("abcd",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY));
+        assertEquals("seq1",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER));
+        assertEquals("5",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
+        assertEquals("0",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
+        assertTrue(attributes.containsKey(GetKinesisStream.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
+        assertEquals("0",attributes.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUBMER));
 
         flowFile.assertContentEquals("hello".getBytes());
 
@@ -149,8 +149,8 @@ public class ITGetKinesis  {
 
     @Test
     public void testGetKinesisInvokeProcessRecordsWithTwoRecord() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
+        runner.setProperty(GetKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
         runner.enqueue("hello".getBytes());
@@ -177,29 +177,29 @@ public class ITGetKinesis  {
 
         getKinesis.processRecords(input, initializationInput);
 
-        runner.assertAllFlowFilesTransferred(GetKinesis.REL_SUCCESS);
+        runner.assertAllFlowFilesTransferred(GetKinesisStream.REL_SUCCESS);
 
         Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint(userRecord2);
 
-        final List<MockFlowFile> getFlowFiles = runner.getFlowFilesForRelationship(GetKinesis.REL_SUCCESS);
+        final List<MockFlowFile> getFlowFiles = runner.getFlowFilesForRelationship(GetKinesisStream.REL_SUCCESS);
         assertEquals("size should be eq", 2, getFlowFiles.size());
 
         Map<String, String> attributes = getFlowFiles.get(0).getAttributes();
-        assertEquals("abcd",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY));
-        assertEquals("seq1",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER));
-        assertEquals("5",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
-        assertEquals("0",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
-        assertTrue(attributes.containsKey(GetKinesis.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
-        assertEquals("0",attributes.get(GetKinesis.KINESIS_CONSUMER_RECORD_NUBMER));
+        assertEquals("abcd",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY));
+        assertEquals("seq1",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER));
+        assertEquals("5",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
+        assertEquals("0",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
+        assertTrue(attributes.containsKey(GetKinesisStream.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
+        assertEquals("0",attributes.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUBMER));
         getFlowFiles.get(0).assertContentEquals("hello1".getBytes());
 
         Map<String, String> attributes2 = getFlowFiles.get(1).getAttributes();
-        assertEquals("abcd",attributes2.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY));
-        assertEquals("seq2",attributes2.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER));
-        assertEquals("5",attributes2.get(GetKinesis.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
-        assertEquals("0",attributes2.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
-        assertTrue(attributes2.containsKey(GetKinesis.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
-        assertEquals("1",attributes2.get(GetKinesis.KINESIS_CONSUMER_RECORD_NUBMER));
+        assertEquals("abcd",attributes2.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY));
+        assertEquals("seq2",attributes2.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER));
+        assertEquals("5",attributes2.get(GetKinesisStream.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
+        assertEquals("0",attributes2.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
+        assertTrue(attributes2.containsKey(GetKinesisStream.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
+        assertEquals("1",attributes2.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUBMER));
         getFlowFiles.get(1).assertContentEquals("hello2".getBytes());
 
         getKinesis.onShutdown();
@@ -207,8 +207,8 @@ public class ITGetKinesis  {
 
     @Test
     public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithSecondRecordDataNull() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
+        runner.setProperty(GetKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
         runner.enqueue("hello".getBytes());
@@ -235,20 +235,20 @@ public class ITGetKinesis  {
 
         getKinesis.processRecords(input, initializationInput);
 
-        runner.assertAllFlowFilesTransferred(GetKinesis.REL_SUCCESS);
+        runner.assertAllFlowFilesTransferred(GetKinesisStream.REL_SUCCESS);
 
         Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint(userRecord1);
 
-        final List<MockFlowFile> getFlowFiles = runner.getFlowFilesForRelationship(GetKinesis.REL_SUCCESS);
+        final List<MockFlowFile> getFlowFiles = runner.getFlowFilesForRelationship(GetKinesisStream.REL_SUCCESS);
         assertEquals("size should be eq", 1, getFlowFiles.size());
 
         Map<String, String> attributes = getFlowFiles.get(0).getAttributes();
-        assertEquals("abcd",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY));
-        assertEquals("seq1",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER));
-        assertEquals("5",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
-        assertEquals("0",attributes.get(GetKinesis.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
-        assertTrue(attributes.containsKey(GetKinesis.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
-        assertEquals("0",attributes.get(GetKinesis.KINESIS_CONSUMER_RECORD_NUBMER));
+        assertEquals("abcd",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_PARTITION_KEY));
+        assertEquals("seq1",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER));
+        assertEquals("5",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
+        assertEquals("0",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
+        assertTrue(attributes.containsKey(GetKinesisStream.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
+        assertEquals("0",attributes.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUBMER));
         getFlowFiles.get(0).assertContentEquals("hello1".getBytes());
 
         getKinesis.onShutdown();
@@ -256,8 +256,8 @@ public class ITGetKinesis  {
 
     @Test
     public void testGetKinesisInvokeProcessRecordsWithTwoRecordWithFirstRecordDataNull() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
+        runner.setProperty(GetKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
         runner.enqueue("hello".getBytes());
@@ -286,17 +286,17 @@ public class ITGetKinesis  {
 
         Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint();
 
-        final List<MockFlowFile> getFlowFilesSuccess = runner.getFlowFilesForRelationship(GetKinesis.REL_SUCCESS);
+        final List<MockFlowFile> getFlowFilesSuccess = runner.getFlowFilesForRelationship(GetKinesisStream.REL_SUCCESS);
         assertEquals("success size should be eq", 0, getFlowFilesSuccess.size());
-        final List<MockFlowFile> getFlowFilesFailed = runner.getFlowFilesForRelationship(GetKinesis.REL_FAILURE);
+        final List<MockFlowFile> getFlowFilesFailed = runner.getFlowFilesForRelationship(GetKinesisStream.REL_FAILURE);
         assertEquals("failed size should be eq", 0, getFlowFilesFailed.size());
         getKinesis.onShutdown();
     }
 
     @Test
     public void testGetKinesisShutdown() throws Exception {
-        runner.setProperty(GetKinesis.KINESIS_STREAM_NAME, kinesisStream);
-        runner.setProperty(GetKinesis.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
+        runner.setProperty(GetKinesisStream.KINESIS_STREAM_NAME, kinesisStream);
+        runner.setProperty(GetKinesisStream.KINESIS_CONSUMER_APPLICATION_NAME, "testapplication");
 
         runner.assertValid();
         runner.enqueue("hello".getBytes());
