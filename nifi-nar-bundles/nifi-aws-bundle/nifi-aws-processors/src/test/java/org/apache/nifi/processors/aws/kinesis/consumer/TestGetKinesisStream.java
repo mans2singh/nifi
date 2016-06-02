@@ -189,8 +189,7 @@ public class TestGetKinesisStream {
     @Test
     public void testRelationships() {
         Set<Relationship> rels = getKinesis.getRelationships();
-        assertEquals("size should be same",2, rels.size());
-        assertTrue(rels.contains(GetKinesisStream.REL_FAILURE));
+        assertEquals("size should be same",1, rels.size());
         assertTrue(rels.contains(GetKinesisStream.REL_SUCCESS));
     }
 

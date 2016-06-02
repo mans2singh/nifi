@@ -21,8 +21,10 @@ import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,6 +43,7 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processors.aws.credentials.provider.service.AWSCredentialsProviderService;
 import org.apache.nifi.util.StopWatch;
@@ -94,6 +97,14 @@ public class GetKinesisStream extends AbstractKinesisConsumerProcessor implement
             KINESIS_CONSUMER_DEFAULT_CLEANUP_LEASES_UPON_SHARDS_COMPLETION,
             KINESIS_CONSUMER_DEFAULT_TASK_BACKOFF_TIME_MILLIS, KINESIS_CONSUMER_DEFAULT_METRICS_BUFFER_TIME_MILLIS,
             KINESIS_CONSUMER_DEFAULT_METRICS_MAX_QUEUE_SIZE, KINESIS_CONSUMER_DEFAULT_METRICS_LEVEL));
+
+    public static final Set<Relationship> relationshipsGetKinesisStream = Collections.unmodifiableSet(
+            new HashSet<>(Arrays.asList(REL_SUCCESS)));
+
+    @Override
+    public Set<Relationship> getRelationships() {
+        return relationshipsGetKinesisStream;
+    }
 
     protected Worker consumerWorker;
 
