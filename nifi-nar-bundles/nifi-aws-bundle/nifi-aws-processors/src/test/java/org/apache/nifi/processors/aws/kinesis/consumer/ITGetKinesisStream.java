@@ -55,7 +55,7 @@ public class ITGetKinesisStream  {
     private TestRunner runner;
     private GetKinesisStream getKinesis;
     private IRecordProcessorCheckpointer mockRecordProcessorCheckPointer;
-    private static final String kinesisStream = "k-stream";
+    private static final String kinesisStream = "ntestkinesis";
 
     @Before
     public void setUp() throws Exception {
@@ -284,10 +284,10 @@ public class ITGetKinesisStream  {
 
         getKinesis.processRecords(input, initializationInput);
 
-        Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint();
+        Mockito.verify(mockRecordProcessorCheckPointer, Mockito.times(1)).checkpoint(record2);
 
         final List<MockFlowFile> getFlowFilesSuccess = runner.getFlowFilesForRelationship(GetKinesisStream.REL_SUCCESS);
-        assertEquals("success size should be eq", 0, getFlowFilesSuccess.size());
+        assertEquals("success size should be eq", 1, getFlowFilesSuccess.size());
         final List<MockFlowFile> getFlowFilesFailed = runner.getFlowFilesForRelationship(GetKinesisStream.REL_FAILURE);
         assertEquals("failed size should be eq", 0, getFlowFilesFailed.size());
         getKinesis.onShutdown();

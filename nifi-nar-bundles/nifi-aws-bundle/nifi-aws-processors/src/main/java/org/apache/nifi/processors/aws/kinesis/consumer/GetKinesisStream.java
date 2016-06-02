@@ -198,30 +198,31 @@ public class GetKinesisStream extends AbstractKinesisConsumerProcessor implement
 
         FlowFile flowFile = null;
         ProcessSession session = getSessionFactory().createSession();
-
         try {
             for (Record record : processRecordsInput.getRecords()) {
-                flowFile = session.create();
-                StopWatch stopWatch = new StopWatch(true);
-                ByteArrayInputStream baos = new ByteArrayInputStream(record.getData().array());
-                flowFile = session.importFrom(baos, flowFile);
+                try {
+                    flowFile = session.create();
+                    StopWatch stopWatch = new StopWatch(true);
+                    ByteArrayInputStream baos = new ByteArrayInputStream(record.getData().array());
+                    flowFile = session.importFrom(baos, flowFile);
 
-                Map<String, String> attributes = createAttributes(processRecordsInput,
-                        processedRecords, timestamp, record);
-                flowFile = session.putAllAttributes(flowFile, attributes);
+                    Map<String, String> attributes = createAttributes(processRecordsInput,
+                            processedRecords, timestamp, record);
+                    flowFile = session.putAllAttributes(flowFile, attributes);
 
-                session.transfer(flowFile, REL_SUCCESS);
+                    session.transfer(flowFile, REL_SUCCESS);
 
-                session.getProvenanceReporter().receive(flowFile,
+                    session.getProvenanceReporter().receive(flowFile,
                         "kinesis://" + streamName +"/" + timestamp + "/" + ++processedRecords,
                         + stopWatch.getElapsed(TimeUnit.MILLISECONDS));
-                lastRecordProcessed = record;
+                    lastRecordProcessed = record;
+                } catch (Exception e) {
+                    if ( flowFile != null ) {
+                        session.remove(flowFile);
+                    }
+                    getLogger().error("Error while handling record: " + record + " with exception: " + e.getMessage());
+                }
             }
-        } catch (Exception e) {
-            if ( flowFile != null ) {
-                session.remove(flowFile);
-            }
-            getLogger().error("Error while handling record: " + e.getMessage());
         } finally {
             try {
                 if (lastRecordProcessed != null)
@@ -229,11 +230,11 @@ public class GetKinesisStream extends AbstractKinesisConsumerProcessor implement
                 else
                     processRecordsInput.getCheckpointer().checkpoint();
             } catch (KinesisClientLibDependencyException | InvalidStateException | ThrottlingException
-                            | ShutdownException e) {
+                        | ShutdownException e) {
                 getLogger().error("Exception while checkpointing record " + e.getMessage() );
             }
-            session.commit();
         }
+        session.commit();
     }
 
     protected Map<String,String> createAttributes(ProcessRecordsInput processRecordsInput, int processedRecords, long timestamp,

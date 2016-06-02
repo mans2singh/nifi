@@ -335,16 +335,19 @@ public class TestGetKinesisStream {
         records.add(record2);
 
         when(mockProcessSessionFactory.createSession()).thenReturn(mockProcessSession);
-        when(mockProcessSession.create()).thenReturn(mockFlowFile1);
+        when(mockProcessSession.create()).thenReturn(mockFlowFile1, mockFlowFile2);
         when(mockProcessSession.getProvenanceReporter()).thenReturn(mockProvenanceReporter);
         when(mockProcessSession.importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile1)))
             .thenThrow(new RuntimeException("testexception"));
+        when(mockProcessSession.importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile2)))
+            .thenReturn(mockFlowFile2);
 
         getKinesis.processRecords(processRecordsInput, mockInitializationInput);
 
         verify(mockProcessSessionFactory).createSession();
         verify(mockProcessSession).importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile1));
-        verify(mockRecordProcessorCheckpointer,times(1)).checkpoint();
+        verify(mockProcessSession).importFrom(isA(ByteArrayInputStream.class), eq(mockFlowFile2));
+        verify(mockRecordProcessorCheckpointer,times(1)).checkpoint(record2);
         verify(mockProcessSession).remove(mockFlowFile1);
         verify(mockProcessSession).commit();
     }
@@ -381,7 +384,7 @@ public class TestGetKinesisStream {
         verify(mockProcessSession).putAllAttributes(eq(mockFlowFile1),(Map<String, String>) isA(Map.class));
 
         verify(mockProcessSession).remove(mockFlowFile1);
-        verify(mockRecordProcessorCheckpointer,times(1)).checkpoint();
+        verify(mockRecordProcessorCheckpointer,times(1)).checkpoint(record2);
         verify(mockProcessSession).commit();
     }
 
