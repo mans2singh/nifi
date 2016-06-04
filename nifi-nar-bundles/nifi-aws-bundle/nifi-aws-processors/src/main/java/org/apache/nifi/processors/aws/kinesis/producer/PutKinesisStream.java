@@ -51,10 +51,10 @@ import com.amazonaws.services.kinesis.producer.Attempt;
 @SupportsBatching
 @InputRequirement(Requirement.INPUT_REQUIRED)
 @Tags({"amazon", "aws", "kinesis", "put", "stream"})
-@CapabilityDescription("Sends the contents of the flowfile to a specified Amazon Kinesis stream."
-        + " This Kinesis processor saves metrics information in AWS Cloud Watch and client information in AWS DynamoDB."
-        + "Therefore AWS credentials used for authentication must have permissions to access to AWS Cloud Formation and AWS DynamodDB."
-        + "Also usage of AWS Cloud Watch and DynamoDB may incur additional costs."
+@CapabilityDescription("Sends the contents of the FlowFile to a specified Amazon Kinesis stream."
+        + " This Kinesis processor saves metrics information in AWS CloudWatch and client information in AWS DynamoDB."
+        + "Therefore AWS credentials used for authentication must have permissions to access to AWS CloudWatch and AWS DynamodDB."
+        + "Use of AWS CloudWatch and DynamoDB may incur additional costs."
         )
 @ReadsAttribute(attribute = PutKinesisStream.AWS_KINESIS_PARTITION_KEY, description = "Partition key to be used for publishing data to kinesis.  If it is not available then a random key used")
 @WritesAttributes({
@@ -69,7 +69,7 @@ import com.amazonaws.services.kinesis.producer.Attempt;
     @WritesAttribute(attribute = PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_PREFIX + "<n>" + PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_ERROR_MESSAGE_SUFFIX , description =
             "Attempt error message for each attempt"),
     @WritesAttribute(attribute = PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_PREFIX + "<n>" + PutKinesisStream.AWS_KINESIS_PRODUCER_RECORD_ATTEMPT_SUCCESSFUL_SUFFIX , description =
-            "Attempt successfulfor each attempt")
+            "Attempt successful for each attempt")
 })
 public class PutKinesisStream extends AbstractKinesisProducerProcessor {
 

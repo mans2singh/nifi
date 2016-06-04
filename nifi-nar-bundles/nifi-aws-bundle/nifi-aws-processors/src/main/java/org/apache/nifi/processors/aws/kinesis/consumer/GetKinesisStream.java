@@ -64,9 +64,9 @@ import com.amazonaws.services.kinesis.model.Record;
 @InputRequirement(Requirement.INPUT_FORBIDDEN)
 @Tags({ "amazon", "aws", "kinesis", "get", "stream" })
 @CapabilityDescription("Get the records from the specified Amazon Kinesis stream. "
-        + " This Kinesis processor saves metrics information in AWS Cloud Watch and client offsets in AWS DynamoDB."
-        + "Therefore AWS credentials used for authentication must have permissions to access to AWS Cloud Formation and AWS DynamodDB."
-        + "Also usage of AWS Cloud Watch and DynamoDB may incur additional costs."
+        + " This Kinesis processor saves metrics information in AWS CloudWatch and client offsets in AWS DynamoDB."
+        + "Therefore AWS credentials used for authentication must have permissions to access to AWS CloudWatch and AWS DynamodDB."
+        + "Use of AWS CloudWatch and DynamoDB may incur additional costs."
 )
 @WritesAttributes({
     @WritesAttribute(attribute = GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP, description = "Approximate arrival time of the record"),

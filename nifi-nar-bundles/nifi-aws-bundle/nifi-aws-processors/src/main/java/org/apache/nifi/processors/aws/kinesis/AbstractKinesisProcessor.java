@@ -31,7 +31,7 @@ public abstract class AbstractKinesisProcessor extends AbstractBaseAWSProcessor 
      */
     public static final PropertyDescriptor KINESIS_STREAM_NAME = new PropertyDescriptor.Builder()
                 .name("Amazon Kinesis Stream Name")
-                .description("The name of kinesis stream")
+                .description("The name of Kinesis stream")
                 .expressionLanguageSupported(false)
                 .required(true)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
