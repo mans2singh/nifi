@@ -41,7 +41,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * The consumer application name
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_APPLICATION_NAME = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Application Name")
+            .displayName("Amazon Kinesis Application Name")
+            .name("amazon-kinesis-application-name")
             .description("The consumer application name")
             .required(true)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -52,7 +53,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * the final worker id
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_WORKER_ID_PREFIX = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Consumer Worker Id Prefix")
+            .displayName("Amazon Kinesis Consumer Worker Id Prefix")
+            .name("amazon-kinesis-consumer-worker-id-prefix")
             .description("The Consumer worker id prefix")
             .defaultValue("KinesisConsumerWorkerId")
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -62,7 +64,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * The starting point in the stream for the consumer
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_INITIAL_POSITION_IN_STREAM = new PropertyDescriptor.Builder()
-            .name("Initial Position in Stream")
+            .displayName("Initial Position in Stream")
+            .name("initial-position-in-stream")
             .description("Initial position in stream from which to start getting events")
             .required(false)
             .defaultValue(InitialPositionInStream.LATEST.name())
@@ -73,7 +76,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Default time for renewal of lease by a consumer worker
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_FAILOVER_TIME_MILLIS = new PropertyDescriptor.Builder()
-            .name("Default Failover Time")
+            .displayName("Default Failover Time")
+            .name("default-failover-time")
             .description("Lease renewal time interval (millis) after which the worker is regarded as failed and lease granted to another worker")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
@@ -84,7 +88,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Max records to fetch in each request
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_MAX_RECORDS = new PropertyDescriptor.Builder()
-            .name("Max Records in Each Request")
+            .displayName("Max Records in Each Request")
+            .name("max-records-in-each-request")
             .description("Maximum number of records to be fetched in each request from the Kinesis stream")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
@@ -95,7 +100,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Idle time between record reads
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_IDLETIME_BETWEEN_READS_MILLIS = new PropertyDescriptor.Builder()
-            .name("Idle Time Betweeen Record Fetch")
+            .displayName("Idle Time Betweeen Record Fetch")
+            .name("idle-time-betweeen-record-fetch")
             .description("Idle time between record reads (millis)")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
@@ -106,7 +112,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Skip empty records call to records processor
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_DONT_CALL_PROCESS_RECORDS_FOR_EMPTY_RECORD_LIST = new PropertyDescriptor.Builder()
-            .name("Skip call if records list is empty record lists")
+            .displayName("Skip call if records list is empty record")
+            .name("skip-call-if-records-list-is-empty")
             .description("Don't call record processor if record list is empty")
             .required(false)
             .allowableValues(new AllowableValue("true"), new AllowableValue("false"))
@@ -117,7 +124,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Polling interval for parent shard
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_PARENT_SHARD_POLL_INTERVAL_MILLIS = new PropertyDescriptor.Builder()
-            .name("Parent Shard Poll Interval")
+            .displayName("Parent Shard Poll Interval")
+            .name("parent-shard-poll-interval")
             .description("Interval between polling to check for parent shard completion (millis)")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
@@ -128,7 +136,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Sync shard interval
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_SHARD_SYNC_INTERVAL_MILLIS = new PropertyDescriptor.Builder()
-            .name("Shard Sync Interval")
+            .displayName("Shard Sync Interval")
+            .name("shard-sync-interval")
             .description("Sync interval for shard tasks (millis)")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
@@ -139,7 +148,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Clean up lease after shard completion
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_CLEANUP_LEASES_UPON_SHARDS_COMPLETION = new PropertyDescriptor.Builder()
-            .name("Clean up Lease on Shard Completion")
+            .displayName("Clean up Lease on Shard Completion")
+            .name("clean-up-lease-on-shard-completion")
             .description("Proactively clean up leases to reduce resource tracking")
             .required(false)
             .allowableValues(new AllowableValue("true"), new AllowableValue("false"))
@@ -150,7 +160,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Back off time interval in case of failures
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_TASK_BACKOFF_TIME_MILLIS = new PropertyDescriptor.Builder()
-            .name("Back Off Time on Failure")
+            .displayName("Back Off Time on Failure")
+            .name("back-off-time-on-failure")
             .description("Backoff time interval on failure (millis)")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
@@ -161,7 +172,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Metrics buffer interval in millis
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_METRICS_BUFFER_TIME_MILLIS = new PropertyDescriptor.Builder()
-            .name("Max Metrics Buffer interval")
+            .displayName("Max Metrics Buffer interval")
+            .name("max-metrics-buffer-interval")
             .description("Interval for which metrics are buffered (millis)")
             .required(false)
             .addValidator(StandardValidators.LONG_VALIDATOR)
@@ -172,7 +184,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Buffer metrics max count
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_METRICS_MAX_QUEUE_SIZE = new PropertyDescriptor.Builder()
-            .name("Max Metrics Buffer Count")
+            .displayName("Max Metrics Buffer Count")
+            .name("max-metrics-buffer-count")
             .description("Buffer max count for metrics")
             .required(false)
             .addValidator(StandardValidators.INTEGER_VALIDATOR)
@@ -183,7 +196,8 @@ public abstract class AbstractKinesisConsumerProcessor extends AbstractKinesisPr
      * Metrics level
      */
     public static final PropertyDescriptor KINESIS_CONSUMER_DEFAULT_METRICS_LEVEL = new PropertyDescriptor.Builder()
-            .name("Metrics Level")
+            .displayName("Metrics Level")
+            .name("metrics-level")
             .description("Level of metrics send to cloud watch")
             .required(false)
             .allowableValues(getMetricsAllowableValues())

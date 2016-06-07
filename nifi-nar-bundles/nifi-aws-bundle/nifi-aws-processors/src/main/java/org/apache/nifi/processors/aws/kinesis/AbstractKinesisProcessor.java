@@ -30,7 +30,8 @@ public abstract class AbstractKinesisProcessor extends AbstractBaseAWSProcessor 
      * Kinesis stream name
      */
     public static final PropertyDescriptor KINESIS_STREAM_NAME = new PropertyDescriptor.Builder()
-                .name("Amazon Kinesis Stream Name")
+                .displayName("Amazon Kinesis Stream Name")
+                .name("amazon-kinesis-stream-name")
                 .description("The name of Kinesis stream")
                 .expressionLanguageSupported(false)
                 .required(true)
@@ -41,7 +42,8 @@ public abstract class AbstractKinesisProcessor extends AbstractBaseAWSProcessor 
      * Batch size of messages to be processed when the processor is invoked
      */
     public static final PropertyDescriptor BATCH_SIZE = new PropertyDescriptor.Builder()
-            .name("Batch Size")
+            .displayName("Batch Size")
+            .name("batch-size")
             .description("Batch size for messages to be processed on each trigger request (between 1-500).")
             .defaultValue("250")
             .required(false)

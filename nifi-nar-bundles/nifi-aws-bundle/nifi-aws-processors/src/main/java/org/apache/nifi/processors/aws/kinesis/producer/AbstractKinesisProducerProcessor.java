@@ -27,7 +27,8 @@ import org.apache.nifi.processors.aws.kinesis.AbstractKinesisProcessor;
 public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisProcessor {
 
     public static final PropertyDescriptor KINESIS_PARTITION_KEY = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Stream Partition Key")
+            .displayName("Amazon Kinesis Stream Partition Key")
+            .name("amazon-kinesis-stream-partition-key")
             .description("The partition key attribute.  If it is not set, a random value is used")
             .expressionLanguageSupported(true)
             .defaultValue("${kinesis.partition.key}")
@@ -36,7 +37,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_AGGREGATION_ENABLED = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Aggregation Enabled")
+            .displayName("Amazon Kinesis Producer Aggregation Enabled")
+            .name("amazon-kinesis-producer-aggregation-enabled")
             .description("Producer aggregation enabled")
             .expressionLanguageSupported(false)
             .required(false)
@@ -45,7 +47,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_AGGREGATION_MAX_COUNT = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Aggregation Max Count")
+            .displayName("Amazon Kinesis Producer Aggregation Max Count")
+            .name("amazon-kinesis-producer-aggregation-max-count")
             .description("Producer items aggregated in each Kinesis record for each request (between 1-4294967295)")
             .expressionLanguageSupported(false)
             .required(false)
@@ -54,7 +57,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_AGGREGATION_MAX_SIZE = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Aggregation Max Size")
+            .displayName("Amazon Kinesis Producer Aggregation Max Size")
+            .name("amazon-kinesis-producer-aggregation-max-size")
             .description("Producer max aggregation size for data to be posted to Kinesis (between 64-1048576)")
             .expressionLanguageSupported(false)
             .required(false)
@@ -63,7 +67,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_COLLECTION_MAX_COUNT = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Collection Max Count")
+            .displayName("Amazon Kinesis Producer Collection Max Count")
+            .name("amazon-kinesis-producer-collection-max-count")
             .description("Producer items posted in each request (between 1-500)")
             .expressionLanguageSupported(false)
             .required(false)
@@ -72,7 +77,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_COLLECTION_MAX_SIZE = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Collection Max Size")
+            .displayName("Amazon Kinesis Producer Collection Max Size")
+            .name("amazon-kinesis-producer-collection-max-size")
             .description("Producer collection max size (between 52224-9223372036854775807")
             .expressionLanguageSupported(false)
             .required(false)
@@ -81,7 +87,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_FAIL_IF_THROTTLED = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Fail if Throttled Enabled")
+            .displayName("Amazon Kinesis Producer Fail if Throttled Enabled")
+            .name("amazon-kinesis-producer-fail-if-throttled-enabled")
             .description("Producer fails the request if being throttled by AWS")
             .expressionLanguageSupported(false)
             .required(false)
@@ -90,7 +97,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_MAX_CONNECTIONS_TO_BACKEND = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Max Connections to Backend")
+            .displayName("Amazon Kinesis Producer Max Connections to Backend")
+            .name("amazon-kinesis-producer-max-connections-to-backend")
             .description("Producer max connections to backend (between 1-256")
             .expressionLanguageSupported(false)
             .required(false)
@@ -99,7 +107,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_MIN_CONNECTIONS_TO_BACKEND = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Min Connections to Backend")
+            .displayName("Amazon Kinesis Producer Min Connections to Backend")
+            .name("amazon-kinesis-producer-min-connections-to-backend")
             .description("Producer min connections to backend (between 1-16")
             .expressionLanguageSupported(false)
             .required(false)
@@ -108,7 +117,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_METRICS_GRANULARITY = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Metrics Granularity")
+            .displayName("Amazon Kinesis Producer Metrics Granularity")
+            .name("amazon-kinesis-producer-metrics-granularity")
             .description("The metrics granularity for stream")
             .expressionLanguageSupported(false)
             .required(true)
@@ -117,7 +127,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_METRICS_NAMESPACE = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Metrics Namespace")
+            .displayName("Amazon Kinesis Producer Metrics Namespace")
+            .name("amazon-kinesis-producer-metrics-namespace")
             .description("The metrics CloudWatch namespace for stream metrics reporting")
             .expressionLanguageSupported(false)
             .required(true)
@@ -126,7 +137,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_METRICS_LEVEL = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Metrics Level")
+            .displayName("Amazon Kinesis Producer Metrics Level")
+            .name("amazon-kinesis-producer-metrics-level")
             .description("The metrics detail level for the producer")
             .expressionLanguageSupported(false)
             .required(true)
@@ -135,7 +147,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_MAX_PUT_RATE = new PropertyDescriptor.Builder()
-            .name("Amazon Kinesis Producer Max Put Rate")
+            .displayName("Amazon Kinesis Producer Max Put Rate")
+            .name("amazon-kinesis-producer-max-put-rate")
             .description("Limits the maximum allowed put rate for a shard, as a percentage of the backend limits. "
                 + "Default is 150%.")
             .expressionLanguageSupported(false)
@@ -145,7 +158,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_MAX_BUFFER_INTERVAL = new PropertyDescriptor.Builder()
-            .name("Max Buffer Interval")
+            .displayName("Max Buffer Interval")
+            .name("max-buffer-interval")
             .description("Buffering interval for messages (between 100-9223372036854775807 millis)")
             .defaultValue("100")
             .required(false)
@@ -154,7 +168,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_TLS_CONNECT_TIMEOUT = new PropertyDescriptor.Builder()
-            .name("TLS Connect Timeout")
+            .displayName("TLS Connect Timeout")
+            .name("tls-connect-timeout")
             .description("TLS Connect timeout (between 100-300000 millis)")
             .defaultValue("6000")
             .required(false)
@@ -163,7 +178,8 @@ public abstract class AbstractKinesisProducerProcessor extends AbstractKinesisPr
             .build();
 
     public static final PropertyDescriptor KINESIS_PRODUCER_REQUEST_TIMEOUT = new PropertyDescriptor.Builder()
-            .name("Request Timeout")
+            .displayName("Request Timeout")
+            .name("request-timeout")
             .description("Request timeout (between 100-600000 milli secs)")
             .defaultValue("6000")
             .required(false)

@@ -74,7 +74,7 @@ import com.amazonaws.services.kinesis.model.Record;
     @WritesAttribute(attribute = GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_SEQUENCE_NUMBER, description = "Sequence number of the record"),
     @WritesAttribute(attribute = GetKinesisStream.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND, description = "Consumer lag for processing records"),
     @WritesAttribute(attribute = GetKinesisStream.KINESIS_CONSUMER_RECORD_START_TIMESTAMP, description = "Timestamp when the particular batch of records was processed "),
-    @WritesAttribute(attribute = GetKinesisStream.KINESIS_CONSUMER_RECORD_NUBMER, description = "Record number of the record processed in that batch")
+    @WritesAttribute(attribute = GetKinesisStream.KINESIS_CONSUMER_RECORD_NUMBER, description = "Record number of the record processed in that batch")
 })
 public class GetKinesisStream extends AbstractKinesisConsumerProcessor implements RecordsHandler {
 
@@ -86,7 +86,7 @@ public class GetKinesisStream extends AbstractKinesisConsumerProcessor implement
     public static final String AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP = "aws.kinesis.consumer.record.approx.arrival.timestamp";
     public static final String AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND = "aws.kinesis.consumer.record.milli.seconds.behind";
     public static final String KINESIS_CONSUMER_RECORD_START_TIMESTAMP = "kinesis.consumer.record.start.timestamp";
-    public static final String KINESIS_CONSUMER_RECORD_NUBMER = "kinesis.consumer.record.number";
+    public static final String KINESIS_CONSUMER_RECORD_NUMBER = "kinesis.consumer.record.number";
 
     public static final List<PropertyDescriptor> properties = Collections.unmodifiableList(Arrays.asList(REGION,
             AWS_CREDENTIALS_PROVIDER_SERVICE, KINESIS_STREAM_NAME, KINESIS_CONSUMER_APPLICATION_NAME,
@@ -258,7 +258,7 @@ public class GetKinesisStream extends AbstractKinesisConsumerProcessor implement
         attributes.put( AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP,
             Long.toString(record.getApproximateArrivalTimestamp().getTime()));
         attributes.put( KINESIS_CONSUMER_RECORD_START_TIMESTAMP, Long.toString(timestamp));
-        attributes.put( KINESIS_CONSUMER_RECORD_NUBMER, Integer.toString(processedRecords));
+        attributes.put( KINESIS_CONSUMER_RECORD_NUMBER, Integer.toString(processedRecords));
 
         return attributes;
     }

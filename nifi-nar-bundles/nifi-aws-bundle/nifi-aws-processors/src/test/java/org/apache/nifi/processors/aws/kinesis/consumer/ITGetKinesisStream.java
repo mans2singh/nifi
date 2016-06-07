@@ -136,7 +136,7 @@ public class ITGetKinesisStream  {
         assertEquals("5",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
         assertEquals("0",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
         assertTrue(attributes.containsKey(GetKinesisStream.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
-        assertEquals("0",attributes.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUBMER));
+        assertEquals("0",attributes.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUMBER));
 
         flowFile.assertContentEquals("hello".getBytes());
 
@@ -190,7 +190,7 @@ public class ITGetKinesisStream  {
         assertEquals("5",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
         assertEquals("0",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
         assertTrue(attributes.containsKey(GetKinesisStream.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
-        assertEquals("0",attributes.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUBMER));
+        assertEquals("0",attributes.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUMBER));
         getFlowFiles.get(0).assertContentEquals("hello1".getBytes());
 
         Map<String, String> attributes2 = getFlowFiles.get(1).getAttributes();
@@ -199,7 +199,7 @@ public class ITGetKinesisStream  {
         assertEquals("5",attributes2.get(GetKinesisStream.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
         assertEquals("0",attributes2.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
         assertTrue(attributes2.containsKey(GetKinesisStream.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
-        assertEquals("1",attributes2.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUBMER));
+        assertEquals("1",attributes2.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUMBER));
         getFlowFiles.get(1).assertContentEquals("hello2".getBytes());
 
         getKinesis.onShutdown();
@@ -248,7 +248,7 @@ public class ITGetKinesisStream  {
         assertEquals("5",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_MILLIS_SECONDS_BEHIND));
         assertEquals("0",attributes.get(GetKinesisStream.AWS_KINESIS_CONSUMER_RECORD_APPROX_ARRIVAL_TIMESTAMP));
         assertTrue(attributes.containsKey(GetKinesisStream.KINESIS_CONSUMER_RECORD_START_TIMESTAMP));
-        assertEquals("0",attributes.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUBMER));
+        assertEquals("0",attributes.get(GetKinesisStream.KINESIS_CONSUMER_RECORD_NUMBER));
         getFlowFiles.get(0).assertContentEquals("hello1".getBytes());
 
         getKinesis.onShutdown();
