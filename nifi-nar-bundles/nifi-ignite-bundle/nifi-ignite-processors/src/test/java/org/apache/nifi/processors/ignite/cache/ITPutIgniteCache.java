@@ -43,7 +43,6 @@ public class ITPutIgniteCache {
     public void setUp() throws IOException {
         putIgniteCache = new PutIgniteCache();
         properties1 = new HashMap<String,String>();
-        properties1.put(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "key1");
     }
 
     @After
@@ -60,9 +59,10 @@ public class ITPutIgniteCache {
         runner.setProperty(PutIgniteCache.IGNITE_CONFIGURATION_FILE,
                 "file:///" + new File(".").getAbsolutePath() + "/src/test/resources/test-ignite.xml");
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
-
+        properties1.put("igniteKey", "key5");
         runner.enqueue("test".getBytes(),properties1);
         runner.run(1, false, true);
 
@@ -80,7 +80,7 @@ public class ITPutIgniteCache {
         out.assertAttributeEquals(PutIgniteCache.IGNITE_BATCH_FLOW_FILE_ITEM_NUMBER, "0");
 
         out.assertContentEquals("test".getBytes());
-        Assert.assertArrayEquals("test".getBytes(),(byte[])putIgniteCache.getIgniteCache().get("key1"));
+        Assert.assertArrayEquals("test".getBytes(),(byte[])putIgniteCache.getIgniteCache().get("key5"));
         runner.shutdown();
     }
 

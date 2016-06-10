@@ -29,8 +29,6 @@ import org.apache.ignite.IgniteDataStreamer;
 import org.apache.ignite.lang.IgniteFuture;
 import org.apache.nifi.annotation.behavior.EventDriven;
 import org.apache.nifi.annotation.behavior.InputRequirement;
-import org.apache.nifi.annotation.behavior.ReadsAttribute;
-import org.apache.nifi.annotation.behavior.ReadsAttributes;
 import org.apache.nifi.annotation.behavior.InputRequirement.Requirement;
 import org.apache.nifi.annotation.behavior.SupportsBatching;
 import org.apache.nifi.annotation.behavior.WritesAttribute;
@@ -41,6 +39,7 @@ import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.expression.AttributeExpression.ResultType;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
@@ -58,7 +57,7 @@ import org.apache.nifi.stream.io.StreamUtils;
 @Tags({ "Ignite", "insert", "update", "stream", "write", "put", "cache", "key" })
 @InputRequirement(Requirement.INPUT_REQUIRED)
 @CapabilityDescription("Stream the contents of a FlowFile to Ignite Cache using DataStreamer. " +
-    "The processor uses the value of FlowFile attribute " + PutIgniteCache.IGNITE_CACHE_ENTRY_KEY + " as the " +
+    "The processor uses the value of FlowFile attribute (Ignite cache entry key) as the " +
     "cache key and the byte array of the FlowFile as the value of the cache entry value.  Both the string key and a " +
     " non-empty byte array value are required otherwise the FlowFile is transfered to the failure relation.")
 @WritesAttributes({
@@ -70,19 +69,17 @@ import org.apache.nifi.stream.io.StreamUtils;
     @WritesAttribute(attribute = PutIgniteCache.IGNITE_BATCH_FLOW_FILE_FAILED_COUNT, description = "The total number of failed FlowFiles in the batch"),
     @WritesAttribute(attribute = PutIgniteCache.IGNITE_BATCH_FLOW_FILE_FAILED_REASON_ATTRIBUTE_KEY, description = "The failed reason attribute key")
     })
-@ReadsAttributes({
-    @ReadsAttribute(attribute = PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, description = "Ignite cache key"),
-    })
 public class PutIgniteCache extends AbstractIgniteCacheProcessor {
 
     /**
      * The batch size of flow files to be processed on invocation of onTrigger
      */
     public static final PropertyDescriptor BATCH_SIZE = new PropertyDescriptor.Builder()
-            .name("Batch Size For Entries")
+            .displayName("Batch Size For Entries")
+            .name("batch-size-for-entries")
             .description("Batch size for entries (1-500).")
             .defaultValue("250")
-            .required(false)
+            .required(true)
             .addValidator(StandardValidators.createLongValidator(1, 500, true))
             .sensitive(false)
             .build();
@@ -91,10 +88,11 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
      * Data streamer's per node parallelism
      */
     public static final PropertyDescriptor DATA_STREAMER_PER_NODE_PARALLEL_OPERATIONS = new PropertyDescriptor.Builder()
-            .name("Data Streamer Per Node Parallel Operations")
+            .displayName("Data Streamer Per Node Parallel Operations")
+            .name("data-streamer-per-node-parallel-operations")
             .description("Data streamer per node parallelism")
             .defaultValue("5")
-            .required(false)
+            .required(true)
             .addValidator(StandardValidators.createLongValidator(1, 10, true))
             .sensitive(false)
             .build();
@@ -103,10 +101,11 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
      * Data streamers per node buffer size
      */
     public static final PropertyDescriptor DATA_STREAMER_PER_NODE_BUFFER_SIZE = new PropertyDescriptor.Builder()
-            .name("Data Streamer Per Node Buffer Size")
+            .displayName("Data Streamer Per Node Buffer Size")
+            .name("data-streamer-per-node-buffer-size")
             .description("Data streamer per node buffer size (1-500).")
             .defaultValue("250")
-            .required(false)
+            .required(true)
             .addValidator(StandardValidators.createLongValidator(1, 500, true))
             .sensitive(false)
             .build();
@@ -115,10 +114,11 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
      * Data streamers auto flush frequency
      */
     public static final PropertyDescriptor DATA_STREAMER_AUTO_FLUSH_FREQUENCY = new PropertyDescriptor.Builder()
-            .name("Data Streamer Auto Flush Frequency in millis")
-            .description("Data streamer flush interval in millis")
+            .displayName("Data Streamer Auto Flush Frequency in millis")
+            .name("data-streamer-auto-flush-frequency-in-millis")
+            .description("Data streamer flush interval in millis seconds")
             .defaultValue("10")
-            .required(false)
+            .required(true)
             .addValidator(StandardValidators.createLongValidator(1, 100, true))
             .sensitive(false)
             .build();
@@ -127,11 +127,23 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
      * Data streamers override values property
      */
     public static final PropertyDescriptor DATA_STREAMER_ALLOW_OVERRIDE = new PropertyDescriptor.Builder()
-            .name("Data Streamer Allow Override")
+            .displayName("Data Streamer Allow Override")
+            .name("data-streamer-allow-override")
             .description("Whether to override values already in the cache")
             .defaultValue("false")
+            .required(true)
             .allowableValues(new AllowableValue("true"), new AllowableValue("false"))
             .sensitive(false)
+            .build();
+
+    public static final PropertyDescriptor IGNITE_CACHE_ENTRY_KEY = new PropertyDescriptor.Builder()
+            .displayName("Ignite Cache Entry Identifier")
+            .name("ignite-cache-entry-identifier")
+            .description("A FlowFile attribute, or attribute expression used " +
+                "for determining Ignite cache key for the Flow File content")
+            .required(true)
+            .addValidator(StandardValidators.createAttributeExpressionLanguageValidator(ResultType.STRING, true))
+            .expressionLanguageSupported(true)
             .build();
 
     /** Flow file attribute keys and messages */
@@ -151,6 +163,7 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
         descriptors.add(IGNITE_CONFIGURATION_FILE);
         descriptors.add(CACHE_NAME);
         descriptors.add(BATCH_SIZE);
+        descriptors.add(IGNITE_CACHE_ENTRY_KEY);
         descriptors.add(DATA_STREAMER_PER_NODE_PARALLEL_OPERATIONS);
         descriptors.add(DATA_STREAMER_PER_NODE_BUFFER_SIZE);
         descriptors.add(DATA_STREAMER_AUTO_FLUSH_FREQUENCY);
@@ -231,7 +244,6 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
             return;
         }
 
-//        Map<String, byte[]> cacheMap = new java.util.HashMap<>();
         List<Map.Entry<String, byte[]>> cacheItems = new ArrayList<>();
         List<FlowFile> successfulFlowFiles = new ArrayList<>();
         List<FlowFile> failedFlowFiles = new ArrayList<>();
@@ -241,9 +253,9 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
                 try {
                     flowFile = flowFiles.get(i);
 
-                    String key = flowFile.getAttribute(IGNITE_CACHE_ENTRY_KEY);
+                    String key = context.getProperty(IGNITE_CACHE_ENTRY_KEY).evaluateAttributeExpressions(flowFile).getValue();
 
-                    if ( isFailedFlowFile(flowFile) ) {
+                    if ( isFailedFlowFile(flowFile, key) ) {
                         failedFlowFiles.add(flowFile);
                         continue;
                     }
@@ -262,6 +274,7 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
                 } catch (Exception e) {
                     getLogger().error("Failed to insert {} into IgniteDB due to {}", new Object[] { flowFile, e }, e);
                     session.transfer(flowFile, REL_FAILURE);
+                    context.yield();
                 }
             }
         } finally {
@@ -274,10 +287,14 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
             if (!successfulFlowFiles.isEmpty()) {
                 successfulFlowFiles = updateSuccessfulFlowFileAttributes(flowFiles, successfulFlowFiles, session);
                 session.transfer(successfulFlowFiles, REL_SUCCESS);
+                for (FlowFile flowFile : successfulFlowFiles) {
+                    String key = context.getProperty(IGNITE_CACHE_ENTRY_KEY).evaluateAttributeExpressions(flowFile).getValue();
+                    session.getProvenanceReporter().receive(flowFile, "ignite://" + key);
+                }
             }
 
             if (!failedFlowFiles.isEmpty()) {
-                failedFlowFiles = updateFailedFlowFileAttributes(flowFiles, failedFlowFiles, session);
+                failedFlowFiles = updateFailedFlowFileAttributes(flowFiles, failedFlowFiles, session, context);
                 session.transfer(failedFlowFiles, REL_FAILURE);
             }
         }
@@ -286,10 +303,10 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
     /**
      * Check if flow if corrupted (either flow file is empty or does not have a key attribute)
      * @param flowFile the flow file to check
+     * @param key the cache key
      * @return <code>true</code> if flow file is incomplete
      */
-    private boolean isFailedFlowFile(FlowFile flowFile) {
-        String key = flowFile.getAttribute(IGNITE_CACHE_ENTRY_KEY);
+    private boolean isFailedFlowFile(FlowFile flowFile, String key) {
         if ( StringUtils.isEmpty(key) ) {
             return true;
         }
@@ -334,11 +351,12 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
      * @param flowFiles all flow files
      * @param failedFlowFiles list of failed flow files
      * @param session process session
+     * @param context the process context
      * @return failed flow files with updated attributes
      */
     protected List<FlowFile> updateFailedFlowFileAttributes(
             List<FlowFile> flowFiles,
-            List<FlowFile> failedFlowFiles, ProcessSession session) {
+            List<FlowFile> failedFlowFiles, ProcessSession session, ProcessContext context) {
 
         int flowFileCount = flowFiles.size();
         int flowFileFailed = failedFlowFiles.size();
@@ -353,7 +371,9 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
             attributes.put(IGNITE_BATCH_FLOW_FILE_ITEM_NUMBER, Integer.toString(flowFiles.indexOf(flowFile)));
             attributes.put(IGNITE_BATCH_FLOW_FILE_FAILED_COUNT, Integer.toString(flowFileFailed));
 
-            if (StringUtils.isEmpty(flowFile.getAttribute(IGNITE_CACHE_ENTRY_KEY))) {
+            String key = context.getProperty(IGNITE_CACHE_ENTRY_KEY).evaluateAttributeExpressions(flowFile).getValue();
+
+            if (StringUtils.isEmpty(key)) {
                 attributes.put(IGNITE_BATCH_FLOW_FILE_FAILED_REASON_ATTRIBUTE_KEY,
                         IGNITE_BATCH_FLOW_FILE_FAILED_MISSING_KEY_MESSAGE);
             } else if (flowFile.getSize() == 0) {

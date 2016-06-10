@@ -44,7 +44,8 @@ public abstract class AbstractIgniteCacheProcessor extends AbstractIgniteProcess
      * Ignite cache name
      */
     protected static final PropertyDescriptor CACHE_NAME = new PropertyDescriptor.Builder()
-            .name("Ignite Cache Name")
+            .displayName("Ignite Cache Name")
+            .name("ignite-cache-name")
             .description("The name of the ignite cache where e")
             .required(false)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)

@@ -67,9 +67,9 @@ public class TestPutIgniteCache {
 
         };
         properties1 = new HashMap<String,String>();
-        properties1.put(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "key1");
+        properties1.put("igniteKey", "key1");
         properties2 = new HashMap<String,String>();
-        properties2.put(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "key2");
+        properties2.put("igniteKey", "key2");
     }
 
     @After
@@ -79,15 +79,46 @@ public class TestPutIgniteCache {
     }
 
     @Test
+    public void testPutIgniteCacheOnTriggerDefaultConfigurationOneFlowFileWithPlainKey() throws IOException, InterruptedException {
+
+        runner = TestRunners.newTestRunner(putIgniteCache);
+        runner.setProperty(PutIgniteCache.BATCH_SIZE, "5");
+        runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
+        runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "mykey");
+
+        runner.assertValid();
+        runner.enqueue("test".getBytes(),properties1);
+        runner.run(1, false, true);
+
+        runner.assertAllFlowFilesTransferred(PutIgniteCache.REL_SUCCESS, 1);
+        List<MockFlowFile> sucessfulFlowFiles = runner.getFlowFilesForRelationship(PutIgniteCache.REL_SUCCESS);
+        assertEquals(1, sucessfulFlowFiles.size());
+        List<MockFlowFile> failureFlowFiles = runner.getFlowFilesForRelationship(PutIgniteCache.REL_FAILURE);
+        assertEquals(0, failureFlowFiles.size());
+
+        final MockFlowFile out = runner.getFlowFilesForRelationship(PutIgniteCache.REL_SUCCESS).get(0);
+
+        out.assertAttributeEquals(PutIgniteCache.IGNITE_BATCH_FLOW_FILE_SUCCESSFUL_ITEM_NUMBER, "0");
+        out.assertAttributeEquals(PutIgniteCache.IGNITE_BATCH_FLOW_FILE_TOTAL_COUNT, "1");
+        out.assertAttributeEquals(PutIgniteCache.IGNITE_BATCH_FLOW_FILE_SUCCESSFUL_COUNT, "1");
+        out.assertAttributeEquals(PutIgniteCache.IGNITE_BATCH_FLOW_FILE_ITEM_NUMBER, "0");
+
+        out.assertContentEquals("test".getBytes());
+        Assert.assertArrayEquals("test".getBytes(),(byte[])putIgniteCache.getIgniteCache().get("mykey"));
+        runner.shutdown();
+    }
+
+    @Test
     public void testPutIgniteCacheOnTriggerDefaultConfigurationOneFlowFile() throws IOException, InterruptedException {
 
         runner = TestRunners.newTestRunner(putIgniteCache);
         runner.setProperty(PutIgniteCache.BATCH_SIZE, "5");
         runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
-
         runner.enqueue("test".getBytes(),properties1);
         runner.run(1, false, true);
 
@@ -116,9 +147,9 @@ public class TestPutIgniteCache {
         runner.setProperty(PutIgniteCache.BATCH_SIZE, "5");
         runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
-
         runner.enqueue("test1".getBytes(),properties1);
         runner.enqueue("test2".getBytes(),properties1);
         runner.run(1, false, true);
@@ -161,9 +192,9 @@ public class TestPutIgniteCache {
         runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
         runner.setProperty(PutIgniteCache.DATA_STREAMER_ALLOW_OVERRIDE, "true");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
-
         runner.enqueue("test1".getBytes(),properties1);
         runner.enqueue("test2".getBytes(),properties1);
         runner.run(1, false, true);
@@ -206,6 +237,7 @@ public class TestPutIgniteCache {
         runner.setProperty(PutIgniteCache.BATCH_SIZE, "5");
         runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
         properties1.clear();
@@ -238,6 +270,7 @@ public class TestPutIgniteCache {
         runner.setProperty(PutIgniteCache.BATCH_SIZE, "5");
         runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
         runner.enqueue("".getBytes(),properties1);
@@ -269,9 +302,9 @@ public class TestPutIgniteCache {
         runner.setProperty(PutIgniteCache.BATCH_SIZE, "5");
         runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
-
         runner.enqueue("test1".getBytes(),properties1);
         runner.enqueue("test2".getBytes(),properties2);
         runner.run(1, false, true);
@@ -313,6 +346,7 @@ public class TestPutIgniteCache {
         runner.setProperty(PutIgniteCache.BATCH_SIZE, "5");
         runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
 
@@ -359,9 +393,9 @@ public class TestPutIgniteCache {
         runner.setProperty(PutIgniteCache.BATCH_SIZE, "5");
         runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
-
         runner.enqueue("test1".getBytes());
         runner.enqueue("test2".getBytes(),properties2);
         runner.run(1, false, true);
@@ -403,6 +437,7 @@ public class TestPutIgniteCache {
         runner.setProperty(PutIgniteCache.BATCH_SIZE, "5");
         runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
 
@@ -448,6 +483,7 @@ public class TestPutIgniteCache {
         runner.setProperty(PutIgniteCache.BATCH_SIZE, "5");
         runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
 
@@ -494,11 +530,10 @@ public class TestPutIgniteCache {
         runner.setProperty(PutIgniteCache.BATCH_SIZE, "5");
         runner.setProperty(PutIgniteCache.CACHE_NAME, CACHE_NAME);
         runner.setProperty(PutIgniteCache.DATA_STREAMER_PER_NODE_BUFFER_SIZE, "1");
+        runner.setProperty(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "${igniteKey}");
 
         runner.assertValid();
-
         runner.enqueue("test1".getBytes());
-        properties1.put(PutIgniteCache.IGNITE_CACHE_ENTRY_KEY, "key2ok");
         runner.enqueue("test2".getBytes(),properties1);
         runner.enqueue("".getBytes(),properties2);
         runner.run(1, false, true);
@@ -517,7 +552,7 @@ public class TestPutIgniteCache {
         out1.assertAttributeEquals(PutIgniteCache.IGNITE_BATCH_FLOW_FILE_ITEM_NUMBER, "0");
 
         out1.assertContentEquals("test1".getBytes());
-        assertNull((byte[])putIgniteCache.getIgniteCache().get("key1"));
+        assertEquals("test2", new String(putIgniteCache.getIgniteCache().get("key1")));
 
         final MockFlowFile out2 = runner.getFlowFilesForRelationship(PutIgniteCache.REL_SUCCESS).get(0);
 
@@ -527,7 +562,7 @@ public class TestPutIgniteCache {
         out2.assertAttributeEquals(PutIgniteCache.IGNITE_BATCH_FLOW_FILE_SUCCESSFUL_COUNT, "1");
 
         out2.assertContentEquals("test2".getBytes());
-        Assert.assertArrayEquals("test2".getBytes(),(byte[])putIgniteCache.getIgniteCache().get("key2ok"));
+        Assert.assertArrayEquals("test2".getBytes(),(byte[])putIgniteCache.getIgniteCache().get("key1"));
 
         final MockFlowFile out3 = runner.getFlowFilesForRelationship(PutIgniteCache.REL_FAILURE).get(1);
 
