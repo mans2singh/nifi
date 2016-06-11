@@ -27,28 +27,28 @@ import java.util.Map;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class ITPutIgniteCache {
 
     private static final String CACHE_NAME = "testCache";
-    private TestRunner runner;
-    private PutIgniteCache putIgniteCache;
-    private Map<String,String> properties1;
-	private HashMap<String, String> properties2;
+    private static TestRunner runner;
+    private static PutIgniteCache putIgniteCache;
+    private static Map<String,String> properties1;
+	private static HashMap<String, String> properties2;
 
-    @Before
-    public void setUp() throws IOException {
+    @BeforeClass
+    public static void setUp() throws IOException {
         putIgniteCache = new PutIgniteCache();
         properties1 = new HashMap<String,String>();
         properties2 = new HashMap<String,String>();
     }
 
-    @After
-    public void teardown() {
+    @AfterClass
+    public static void teardown() {
         runner = null;
         putIgniteCache = null;
     }
