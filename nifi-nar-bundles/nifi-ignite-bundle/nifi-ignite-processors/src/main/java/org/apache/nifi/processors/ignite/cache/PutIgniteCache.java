@@ -310,10 +310,7 @@ public class PutIgniteCache extends AbstractIgniteCacheProcessor {
         if ( StringUtils.isEmpty(key) ) {
             return true;
         }
-        if ( flowFile.getSize() == 0 ) {
-            return true;
-        }
-        return false;
+        return flowFile.getSize() == 0;
     }
 
     /**

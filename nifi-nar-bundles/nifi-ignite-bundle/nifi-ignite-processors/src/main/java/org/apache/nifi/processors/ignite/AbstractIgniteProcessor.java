@@ -39,7 +39,7 @@ public abstract class AbstractIgniteProcessor extends AbstractProcessor  {
         .displayName("Ignite Spring Properties Xml File")
         .name("ignite-spring-properties-xml-file")
         .description("Ignite spring configuration file, <path>/<ignite-configuration>.xml. If the " +
-            "configuration file is not provided, default Ignite configuration is used which default " +
+            "configuration file is not provided, default Ignite configuration " +
             "configuration is used which binds to 127.0.0.1:47500..47509")
         .required(false)
         .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -88,7 +88,7 @@ public abstract class AbstractIgniteProcessor extends AbstractProcessor  {
     public void initializeIgnite(ProcessContext context) {
 
         if ( getIgnite() != null ) {
-            getLogger().info("Ignite already initilaized");
+            getLogger().warn("Ignite already initialized");
             return;
         }
 
