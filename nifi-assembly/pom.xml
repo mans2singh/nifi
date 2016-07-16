@@ -391,7 +391,7 @@ language governing permissions and limitations under the License. -->
         <nifi.state.management.embedded.zookeeper.properties>./conf/zookeeper.properties</nifi.state.management.embedded.zookeeper.properties>
         <nifi.state.management.provider.local>local-provider</nifi.state.management.provider.local>
         <nifi.state.management.provider.cluster>zk-provider</nifi.state.management.provider.cluster>
-                
+        
         <nifi.flowfile.repository.implementation>org.apache.nifi.controller.repository.WriteAheadFlowFileRepository</nifi.flowfile.repository.implementation>
         <nifi.flowfile.repository.directory>./flowfile_repository</nifi.flowfile.repository.directory>
         <nifi.flowfile.repository.partitions>256</nifi.flowfile.repository.partitions>
@@ -437,7 +437,7 @@ language governing permissions and limitations under the License. -->
         <nifi.provenance.repository.query.threads>2</nifi.provenance.repository.query.threads>
         <nifi.provenance.repository.index.threads>1</nifi.provenance.repository.index.threads>
         <nifi.provenance.repository.compress.on.rollover>true</nifi.provenance.repository.compress.on.rollover>
-        <nifi.provenance.repository.indexed.fields>EventType, FlowFileUUID, Filename, ProcessorID, Relationship</nifi.provenance.repository.indexed.fields>
+        <nifi.provenance.repository.indexed.fields>EventType, FlowFileUUID, Filename, ProcessorID, Relationship</nifi.provenance.repository.indexed.fields> 
         <nifi.provenance.repository.indexed.attributes />
         <nifi.provenance.repository.index.shard.size>500 MB</nifi.provenance.repository.index.shard.size>
         <nifi.provenance.repository.always.sync>false</nifi.provenance.repository.always.sync>
@@ -489,7 +489,7 @@ language governing permissions and limitations under the License. -->
         <nifi.cluster.node.connection.timeout>5 sec</nifi.cluster.node.connection.timeout>
         <nifi.cluster.node.read.timeout>5 sec</nifi.cluster.node.read.timeout>
         <nifi.cluster.firewall.file />
-
+        
         <nifi.cluster.request.replication.claim.timeout>15 secs</nifi.cluster.request.replication.claim.timeout>
 
         <!--  nifi.properties: zookeeper properties -->
