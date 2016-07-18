@@ -60,8 +60,8 @@ import org.apache.nifi.stream.io.StreamUtils;
     "The processor uses the value of FlowFile attribute (Ignite cache entry key) as the " +
     "cache key and the byte array of the FlowFile as the value of the cache entry value.  Both the string key and a " +
     " non-empty byte array value are required otherwise the FlowFile is transfered to the failure relation. " +
-    "Note - The Ignite Kernel periodically outputs node perforance statistics to the logs. This message " +
-    " can be turned off by setting the log level for logger 'org.apache.ignite' to WARN.")
+    "Note - The Ignite Kernel periodically outputs node performance statistics to the logs. This message " +
+    " can be turned off by setting the log level for logger 'org.apache.ignite' to WARN in the logback.xml configuration file.")
 @WritesAttributes({
     @WritesAttribute(attribute = PutIgniteCache.IGNITE_BATCH_FLOW_FILE_TOTAL_COUNT, description = "The total number of FlowFile in the batch"),
     @WritesAttribute(attribute = PutIgniteCache.IGNITE_BATCH_FLOW_FILE_ITEM_NUMBER, description = "The item number of FlowFile in the batch"),

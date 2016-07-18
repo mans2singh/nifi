@@ -36,11 +36,6 @@ import org.apache.nifi.processors.ignite.AbstractIgniteProcessor;
 public abstract class AbstractIgniteCacheProcessor extends AbstractIgniteProcessor {
 
     /**
-     * Flow File attribute for cache entry key
-     */
-    public static final String IGNITE_CACHE_ENTRY_KEY = "ignite.cache.entry.key";
-
-    /**
      * Ignite cache name
      */
     protected static final PropertyDescriptor CACHE_NAME = new PropertyDescriptor.Builder()
