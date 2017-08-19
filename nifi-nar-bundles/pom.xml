@@ -73,6 +73,7 @@
         <module>nifi-windows-event-log-bundle</module>
         <module>nifi-ignite-bundle</module>
         <module>nifi-rethinkdb-bundle</module>
+        <module>nifi-influxdb-bundle</module>
         <module>nifi-email-bundle</module>
     	<module>nifi-ranger-bundle</module>
         <module>nifi-websocket-bundle</module>
