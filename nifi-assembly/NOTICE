@@ -1543,7 +1543,6 @@ The following binary components are provided under the MIT License.  See project
 
   (MIT License) EWS Java API (com.microsoft.ews-java-api:ews-java-api:2.0 - https://github.com/OfficeDev/ews-java-api)
   (MIT License) libffi (libffi-3.2.1 - http://sourceware.org/libffi/)
-  (MIT License) InfluxDB (org.influxdb:influxdb-java:2.7 https://github.com/influxdata/influxdb-java/)  
 
 *****************
 Mozilla Public License v2.0
